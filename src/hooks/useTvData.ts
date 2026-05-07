@@ -50,6 +50,35 @@ export function useTvData() {
   };
 
   useEffect(() => {
+    // Fetch initial data
+    fetchData();
+
+    // Subscribe to realtime changes for configuracoes
+    const configSubscription = supabase
+      .channel('configuracoes-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'configuracoes' }, (payload) => {
+        console.log('Config updated:', payload);
+        setConfig(payload.new as Configuracoes);
+      })
+      .subscribe();
+
+    // Subscribe to realtime changes for instagram_links
+    const instaSubscription = supabase
+      .channel('instagram-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'instagram_links' }, () => {
+        // Refetch instagram links when they change
+        fetchData();
+      })
+      .subscribe();
+
+    // Cleanup subscriptions
+    return () => {
+      configSubscription.unsubscribe();
+      instaSubscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
     fetchData();
 
     // Listen to changes in the 'configuracoes' table

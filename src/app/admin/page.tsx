@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Configuracoes, InstagramLink, useTvData } from '@/hooks/useTvData';
 import { LogIn, Save, Plus, Trash2, LayoutDashboard } from 'lucide-react';
 
@@ -46,16 +45,16 @@ export default function AdminDashboard() {
   const saveConfig = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('configuracoes')
-        .update({
+      const res = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           youtube_link: localConfig.youtube_link,
           texto_aviso: localConfig.texto_aviso,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', 1);
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error('Erro ao salvar');
       alert('Configurações salvas com sucesso! A TV foi atualizada.');
     } catch (error) {
       alert('Erro ao salvar as configurações.');
@@ -68,25 +67,29 @@ export default function AdminDashboard() {
   const addInstagramLink = async () => {
     if (!newInstaUrl) return;
     try {
-      const { error } = await supabase
-        .from('instagram_links')
-        .insert([{ url: newInstaUrl, ordem: localInsta.length + 1 }]);
-      
-      if (error) throw error;
+      const res = await fetch('/api/admin/instagram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: newInstaUrl }),
+      });
+
+      if (!res.ok) throw new Error('Erro ao adicionar');
       setNewInstaUrl('');
-      // It will auto-refresh via realtime hook, but we could also force a fetch
+      // It will auto-refresh via realtime hook
     } catch (error) {
       alert('Erro ao adicionar link do Instagram.');
+      console.error(error);
     }
   };
+res = await fetch(`/api/admin/instagram?id=${id}`, {
+        method: 'DELETE',
+      });
 
-  const removeInstagramLink = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('instagram_links')
-        .delete()
-        .eq('id', id);
-      
+      if (!res.ok) throw new Error('Erro ao remover');
+      // It will auto-refresh via realtime hook
+    } catch (error) {
+      alert('Erro ao remover link do Instagram.');
+      console.error(error
       if (error) throw error;
     } catch (error) {
       alert('Erro ao remover link do Instagram.');
