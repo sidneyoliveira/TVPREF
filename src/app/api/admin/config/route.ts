@@ -32,26 +32,51 @@ export async function POST(request: Request) {
       image_url,
       announcement_title,
       announcement_text,
-      show_instagram
+      show_instagram,
     } = body;
 
-    const { data, error } = await supabaseAdmin
-      .from('configuracoes')
-      .update({
-        youtube_link,
-        texto_aviso,
-        display_mode,
-        image_url,
-        announcement_title,
-        announcement_text,
-        show_instagram,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', 1)
-      .select();
+    const baseUpdate = {
+      youtube_link,
+      texto_aviso,
+      display_mode,
+      image_url,
+      announcement_title,
+      announcement_text,
+      updated_at: new Date().toISOString(),
+    };
 
-    if (error) throw error;
-    return NextResponse.json(data[0]);
+    // Tenta primeiro com show_instagram (quando existir no schema)
+    try {
+      const updateWithInstagram = {
+        ...baseUpdate,
+        show_instagram,
+      };
+
+      const { data, error } = await supabaseAdmin
+        .from('configuracoes')
+        .update(updateWithInstagram)
+        .eq('id', 1)
+        .select();
+
+      if (error) throw error;
+      return NextResponse.json(data[0]);
+    } catch (error) {
+      const maybeCode = (error as { code?: string })?.code;
+
+      // Se a coluna ainda não existe (migration pendente), salva sem ela.
+      if (maybeCode === 'PGRST204') {
+        const { data, error: errorWithout } = await supabaseAdmin
+          .from('configuracoes')
+          .update(baseUpdate)
+          .eq('id', 1)
+          .select();
+
+        if (errorWithout) throw errorWithout;
+        return NextResponse.json(data[0]);
+      }
+
+      throw error;
+    }
   } catch (error) {
     console.error('Admin config error:', error);
     return NextResponse.json({ error: 'Erro ao salvar configurações' }, { status: 500 });
