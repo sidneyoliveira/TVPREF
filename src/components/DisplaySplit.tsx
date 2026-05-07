@@ -50,16 +50,14 @@ export function DisplaySplit({ config, instagramLinks }: DisplaySplitProps) {
       </div>
 
       {/* Instagram - 30% */}
-      <div className="flex-[3] bg-gray-900 rounded-lg overflow-hidden flex flex-col shadow-2xl">
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 py-2 text-center">
-          <h3 className="text-white font-bold text-sm uppercase tracking-widest">Social Media</h3>
-        </div>
-        <div className="flex-1 overflow-auto flex items-center justify-center p-2">
+      <div className="flex-[3] bg-dark-bg-secondary rounded-lg overflow-hidden flex shadow-2xl">
+        <div className="w-full h-full flex items-center justify-center bg-white">
           {currentInstaPost ? (
             <iframe
               src={getInstaEmbedUrl(currentInstaPost.url)}
-              className="w-full h-full border-none rounded"
+              className="w-full h-full border-none"
               scrolling="no"
+              style={{ minHeight: '100%', objectFit: 'contain' }}
             ></iframe>
           ) : (
             <p className="text-gray-500 text-center text-sm">Sem posts</p>
