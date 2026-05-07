@@ -108,7 +108,6 @@ export default function TvScreen() {
                 src={getInstaEmbedUrl(currentInstaPost.url)}
                 className="w-full h-full max-h-[800px] border-none rounded-xl shadow-lg bg-white"
                 scrolling="no"
-                allowtransparency="true"
               ></iframe>
             ) : (
               <p className="text-gray-400 text-center text-xl">Nenhuma postagem disponível no momento.</p>
