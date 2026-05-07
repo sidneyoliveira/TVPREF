@@ -1,8 +1,6 @@
-import dynamic from 'next/dynamic';
 import { Configuracoes, InstagramLink } from '@/hooks/useTvData';
 import { useState, useEffect } from 'react';
-
-const ReactPlayer = dynamic(() => import('react-player'), { ssr: false }) as any;
+import { getYouTubeEmbedUrl } from './DisplayYoutube';
 
 interface DisplaySplitProps {
   config: Configuracoes;
@@ -31,24 +29,18 @@ export function DisplaySplit({ config, instagramLinks }: DisplaySplitProps) {
   };
 
   const currentInstaPost = instagramLinks[currentInstaIndex];
+  const youtubeEmbedUrl = config.youtube_link ? getYouTubeEmbedUrl(config.youtube_link) : null;
 
   return (
     <div className="w-full h-full flex gap-2 bg-black p-2">
       {/* YouTube - 70% */}
-      <div className="flex-[7] bg-black rounded-lg overflow-hidden shadow-2xl">
-        {config.youtube_link ? (
-          <ReactPlayer
-            url={config.youtube_link}
-            playing
-            muted
-            controls={false}
-            width="100%"
-            height="100%"
-            config={{
-              youtube: {
-                playerVars: { autoplay: 1, mute: 1, origin: typeof window !== 'undefined' ? window.location.origin : '' }
-              }
-            }}
+      <div className="flex-[7] bg-black rounded-lg overflow-hidden shadow-2xl relative pointer-events-none">
+        {youtubeEmbedUrl ? (
+          <iframe
+            src={youtubeEmbedUrl}
+            className="w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
           />
         ) : (
           <div className="flex h-full items-center justify-center">

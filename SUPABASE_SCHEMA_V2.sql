@@ -30,5 +30,5 @@ CREATE POLICY "Permitir deleção para usuários autenticados" ON carousel_image
   FOR DELETE USING (auth.uid() IS NOT NULL);
 
 -- 5. Adicionar à publicação de realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS carousel_images;
+ALTER PUBLICATION supabase_realtime ADD TABLE carousel_images;
 ALTER TABLE carousel_images REPLICA IDENTITY FULL;
