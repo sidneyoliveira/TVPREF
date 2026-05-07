@@ -31,7 +31,8 @@ export async function POST(request: Request) {
       display_mode,
       image_url,
       announcement_title,
-      announcement_text
+      announcement_text,
+      show_instagram
     } = body;
 
     const { data, error } = await supabaseAdmin
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
         image_url,
         announcement_title,
         announcement_text,
+        show_instagram,
         updated_at: new Date().toISOString()
       })
       .eq('id', 1)

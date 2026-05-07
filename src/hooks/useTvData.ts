@@ -9,6 +9,7 @@ export interface Configuracoes {
   image_url?: string;
   announcement_title?: string;
   announcement_text?: string;
+  show_instagram?: boolean;
   updated_at?: string;
 }
 

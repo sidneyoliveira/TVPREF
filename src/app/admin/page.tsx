@@ -234,12 +234,10 @@ export default function AdminDashboard() {
         <form onSubmit={handleLogin} className="w-full max-w-sm">
           <div className="bg-dark-bg-secondary border border-dark-border rounded-2xl p-8 shadow-2xl">
             <div className="flex justify-center mb-6">
-              <div className="bg-accent-blue p-4 rounded-2xl shadow-lg">
-                <Settings2 className="w-10 h-10 text-white" strokeWidth={2.5} />
-              </div>
+              <Image src={logoBranca} alt="Logo" height={60} className="object-contain" priority />
             </div>
             <h2 className="text-2xl font-bold text-white text-center mb-1">Painel TV</h2>
-            <p className="text-dark-text-secondary text-center mb-8 text-sm">Prefeitura Municipal</p>
+            <p className="text-dark-text-secondary text-center mb-8 text-sm">Sistema de Comunicação</p>
             <div className="mb-6">
               <input
                 type="password"
@@ -264,7 +262,6 @@ export default function AdminDashboard() {
     { id: 'image', icon: ImageIcon, label: 'Imagem Fixa' },
     { id: 'announcement', icon: Megaphone, label: 'Aviso Grande' },
     { id: 'carousel', icon: GalleryHorizontal, label: 'Carrossel' },
-    { id: 'split', icon: LayoutTemplate, label: 'Dividido (Tv + Social)' },
   ];
 
   return (
@@ -299,7 +296,7 @@ export default function AdminDashboard() {
             <span className="bg-accent-red/20 text-accent-red px-3 py-1 rounded-full text-xs font-bold animate-pulse">ON AIR</span>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {modes.map((m) => {
               const Icon = m.icon;
               const isActive = displayMode === m.id;
@@ -407,7 +404,7 @@ export default function AdminDashboard() {
                 <GalleryHorizontal size={18} className="text-accent-orange" /> Galeria Carrossel
               </h3>
               <div className="mb-4">
-                <input type="file" accept="image/*" ref={carouselFileInputRef} className="hidden" onChange={handleCarouselImageUpload} />
+                <input type="file" accept="image/*,video/mp4,video/webm" ref={carouselFileInputRef} className="hidden" onChange={handleCarouselImageUpload} />
                 <button 
                   onClick={() => carouselFileInputRef.current?.click()}
                   disabled={isUploading}
@@ -490,6 +487,63 @@ export default function AdminDashboard() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #334155;
+          border-radius: 4px;
+        }
+      `}</style>
+    </div>
+  );
+}
+                    <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          </div>
+
+        </div>
+      </main>
+      
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #334155;
+          border-radius: 4px;
+        }
+      `}</style>
+    </div>
+  );
+}
+>
+            </section>
+          </div>
+
+        </div>
+      </main>
+      
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #334155;
+          border-radius: 4px;
+        }
+      `}</style>
+    </div>
+  );
+}
+ .custom-scrollbar::-webkit-scrollbar-thumb {
           background: #334155;
           border-radius: 4px;
         }
