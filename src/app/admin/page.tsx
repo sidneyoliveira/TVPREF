@@ -17,6 +17,14 @@ export default function AdminDashboard() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    // Verificar se há autenticação salva no localStorage
+    const isAuth = localStorage.getItem('adminAuthenticated') === 'true';
+    if (isAuth) {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!loading) {
       setLocalConfig(config);
       setLocalInsta(instagramLinks);
@@ -33,6 +41,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({ password }),
       });
       if (res.ok) {
+        localStorage.setItem('adminAuthenticated', 'true');
         setIsAuthenticated(true);
       } else {
         setLoginError('Senha incorreta.');
@@ -40,6 +49,12 @@ export default function AdminDashboard() {
     } catch (error) {
       setLoginError('Erro ao tentar fazer login.');
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminAuthenticated');
+    setIsAuthenticated(false);
+    setPassword('');
   };
 
   const saveConfig = async () => {
@@ -81,7 +96,10 @@ export default function AdminDashboard() {
       console.error(error);
     }
   };
-res = await fetch(`/api/admin/instagram?id=${id}`, {
+
+  const removeInstagramLink = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/instagram?id=${id}`, {
         method: 'DELETE',
       });
 
@@ -89,10 +107,7 @@ res = await fetch(`/api/admin/instagram?id=${id}`, {
       // It will auto-refresh via realtime hook
     } catch (error) {
       alert('Erro ao remover link do Instagram.');
-      console.error(error
-      if (error) throw error;
-    } catch (error) {
-      alert('Erro ao remover link do Instagram.');
+      console.error(error);
     }
   };
 
@@ -134,12 +149,20 @@ res = await fetch(`/api/admin/instagram?id=${id}`, {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <header className="max-w-5xl mx-auto flex items-center gap-4 mb-8 bg-white p-6 rounded-xl shadow-sm">
-        <LayoutDashboard className="w-8 h-8 text-blue-600" />
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Dashboard de Controle da TV</h1>
-          <p className="text-gray-500">Qualquer alteração feita aqui aparecerá instantaneamente na TV da recepção.</p>
+      <header className="max-w-5xl mx-auto flex items-center justify-between gap-4 mb-8 bg-white p-6 rounded-xl shadow-sm">
+        <div className="flex items-center gap-4">
+          <LayoutDashboard className="w-8 h-8 text-blue-600" />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Dashboard de Controle da TV</h1>
+            <p className="text-gray-500">Qualquer alteração feita aqui aparecerá instantaneamente na TV da recepção.</p>
+          </div>
         </div>
+        <button
+          onClick={handleLogout}
+          className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+        >
+          Sair
+        </button>
       </header>
 
       <main className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
