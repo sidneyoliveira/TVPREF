@@ -25,13 +25,24 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { youtube_link, texto_aviso } = body;
+    const {
+      youtube_link,
+      texto_aviso,
+      display_mode,
+      image_url,
+      announcement_title,
+      announcement_text
+    } = body;
 
     const { data, error } = await supabaseAdmin
       .from('configuracoes')
       .update({
         youtube_link,
         texto_aviso,
+        display_mode,
+        image_url,
+        announcement_title,
+        announcement_text,
         updated_at: new Date().toISOString()
       })
       .eq('id', 1)

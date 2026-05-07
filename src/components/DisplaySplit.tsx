@@ -44,6 +44,11 @@ export function DisplaySplit({ config, instagramLinks }: DisplaySplitProps) {
             controls={false}
             width="100%"
             height="100%"
+            config={{
+              youtube: {
+                playerVars: { autoplay: 1, mute: 1, origin: typeof window !== 'undefined' ? window.location.origin : '' }
+              }
+            }}
           />
         ) : (
           <div className="flex h-full items-center justify-center">

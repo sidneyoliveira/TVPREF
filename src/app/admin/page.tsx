@@ -38,16 +38,19 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const [hasInitialized, setHasInitialized] = useState(false);
+
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !hasInitialized && config.display_mode) {
       setYoutubeLink(config.youtube_link || '');
       setAviso(config.texto_aviso || '');
       setDisplayMode(config.display_mode || 'youtube');
       setImageUrl(config.image_url || '');
       setAnnouncementTitle(config.announcement_title || '');
       setAnnouncementText(config.announcement_text || '');
+      setHasInitialized(true);
     }
-  }, [config, loading]);
+  }, [config, loading, hasInitialized]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

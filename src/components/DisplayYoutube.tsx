@@ -27,6 +27,11 @@ export function DisplayYoutube({ youtubeLink }: DisplayYoutubeProps) {
         controls={false}
         width="100%"
         height="100%"
+        config={{
+          youtube: {
+            playerVars: { autoplay: 1, mute: 1, origin: typeof window !== 'undefined' ? window.location.origin : '' }
+          }
+        }}
         onError={(error: any) => {
           console.error('Erro ao carregar vídeo:', error);
         }}
