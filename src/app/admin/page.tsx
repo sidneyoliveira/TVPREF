@@ -2,34 +2,50 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Configuracoes, InstagramLink, useTvData, CarouselImage } from '@/hooks/useTvData';
-import { LogOut, Save, Plus, Trash2, Settings2, MonitorPlay, Image as ImageIcon, Megaphone, GalleryHorizontal, LayoutTemplate, Tv, UploadCloud } from 'lucide-react';
+import {
+  LogOut,
+  Save,
+  Plus,
+  Trash2,
+  MonitorPlay,
+  Image as ImageIcon,
+  Megaphone,
+  GalleryHorizontal,
+  LayoutTemplate,
+  Tv,
+  UploadCloud,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import Image from 'next/image';
+import logoBranca from '@/img/logo_branca.png';
 
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  
+
   const { config, instagramLinks, carouselImages, loading, refetch } = useTvData();
-  
+
   // Display mode state
-  const [displayMode, setDisplayMode] = useState<'youtube' | 'image' | 'announcement' | 'carousel' | 'split'>('youtube');
-  
+  const [displayMode, setDisplayMode] = useState<
+    'youtube' | 'image' | 'announcement' | 'carousel' | 'split'
+  >('youtube');
+
   // Config state
   const [youtubeLink, setTvLink] = useState('');
   const [aviso, setAviso] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementText, setAnnouncementText] = useState('');
-  
+
   // Instagram state
   const [newInstaUrl, setNewInstaUrl] = useState('');
-  
+
   // Carousel state
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const carouselFileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
 
@@ -133,10 +149,7 @@ export default function AdminDashboard() {
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
       const filePath = `uploads/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('media')
-        .upload(filePath, file);
-
+      const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from('media').getPublicUrl(filePath);
@@ -153,7 +166,7 @@ export default function AdminDashboard() {
   const handleSingleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     toast.loading('Enviando imagem...', { id: 'upload' });
     const url = await uploadFileToSupabase(file);
     if (url) {
@@ -170,7 +183,7 @@ export default function AdminDashboard() {
 
     toast.loading('Enviando para o carrossel...', { id: 'upload-carousel' });
     const url = await uploadFileToSupabase(file);
-    
+
     if (url) {
       try {
         const res = await fetch('/api/admin/carousel', {
@@ -248,7 +261,10 @@ export default function AdminDashboard() {
                 required
               />
             </div>
-            <button type="submit" className="w-full bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-3 rounded-xl transition-all shadow-md">
+            <button
+              type="submit"
+              className="w-full bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-3 rounded-xl transition-all shadow-md"
+            >
               Entrar
             </button>
           </div>
@@ -278,24 +294,28 @@ export default function AdminDashboard() {
               <p className="text-dark-text-secondary text-xs">Transmissão em Tempo Real</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-dark-text-secondary hover:text-accent-red transition-colors text-sm font-semibold">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-dark-text-secondary hover:text-accent-red transition-colors text-sm font-semibold"
+          >
             <LogOut size={18} /> Sair
           </button>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 pt-6 space-y-6">
-        
         {/* CONTROLE MESTRE DA TV (AO VIVO) */}
         <section className="bg-dark-bg-secondary border border-dark-border rounded-xl p-5 shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <MonitorPlay className="text-accent-red" size={20} /> 
+              <MonitorPlay className="text-accent-red" size={20} />
               No Ar Agora (LIVE)
             </h2>
-            <span className="bg-accent-red/20 text-accent-red px-3 py-1 rounded-full text-xs font-bold animate-pulse">ON AIR</span>
+            <span className="bg-accent-red/20 text-accent-red px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+              ON AIR
+            </span>
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {modes.map((m) => {
               const Icon = m.icon;
@@ -305,9 +325,9 @@ export default function AdminDashboard() {
                   key={m.id}
                   onClick={() => handleModeChange(m.id)}
                   className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all ${
-                    isActive 
-                    ? 'bg-accent-blue border-accent-blue text-white shadow-md transform scale-[1.02]' 
-                    : 'bg-dark-bg-primary border-dark-border text-dark-text-secondary hover:border-dark-text-secondary'
+                    isActive
+                      ? 'bg-accent-blue border-accent-blue text-white shadow-md transform scale-[1.02]'
+                      : 'bg-dark-bg-primary border-dark-border text-dark-text-secondary hover:border-dark-text-secondary'
                   }`}
                 >
                   <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
@@ -320,7 +340,6 @@ export default function AdminDashboard() {
 
         {/* PAINEL DE EDIÇÃO (GRID COMPACTO) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
           {/* COLUNA ESQUERDA: Textos e Tv */}
           <div className="space-y-6">
             <section className="bg-dark-bg-secondary border border-dark-border rounded-xl p-5">
@@ -386,10 +405,20 @@ export default function AdminDashboard() {
               </h3>
               <div className="space-y-3">
                 {imageUrl && (
-                  <img src={imageUrl} alt="Preview" className="w-full h-32 object-cover rounded-lg border border-dark-border" />
+                  <img
+                    src={imageUrl}
+                    alt="Preview"
+                    className="w-full h-32 object-cover rounded-lg border border-dark-border"
+                  />
                 )}
-                <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleSingleImageUpload} />
-                <button 
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={handleSingleImageUpload}
+                />
+                <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
                   className="w-full bg-dark-bg-primary border border-dark-border hover:border-accent-blue text-dark-text-primary px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors"
@@ -404,8 +433,14 @@ export default function AdminDashboard() {
                 <GalleryHorizontal size={18} className="text-accent-orange" /> Galeria Carrossel
               </h3>
               <div className="mb-4">
-                <input type="file" accept="image/*,video/mp4,video/webm" ref={carouselFileInputRef} className="hidden" onChange={handleCarouselImageUpload} />
-                <button 
+                <input
+                  type="file"
+                  accept="image/*,video/mp4,video/webm"
+                  ref={carouselFileInputRef}
+                  className="hidden"
+                  onChange={handleCarouselImageUpload}
+                />
+                <button
                   onClick={() => carouselFileInputRef.current?.click()}
                   disabled={isUploading}
                   className="w-full bg-accent-blue hover:bg-accent-blue-hover text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm transition-colors"
@@ -419,12 +454,24 @@ export default function AdminDashboard() {
                   <p className="text-dark-text-secondary text-xs text-center py-4">Nenhuma imagem adicionada.</p>
                 ) : (
                   carouselImages.map((img) => (
-                    <div key={img.id} className="flex items-center gap-3 bg-dark-bg-primary p-2 rounded-lg border border-dark-border group">
-                      <img src={img.imagem_url} className="w-16 h-12 object-cover rounded bg-black" alt="Carrossel" />
+                    <div
+                      key={img.id}
+                      className="flex items-center gap-3 bg-dark-bg-primary p-2 rounded-lg border border-dark-border group"
+                    >
+                      <img
+                        src={img.imagem_url}
+                        className="w-16 h-12 object-cover rounded bg-black"
+                        alt="Carrossel"
+                      />
                       <div className="flex-1 min-w-0">
-                         <p className="text-xs text-dark-text-secondary truncate">{img.imagem_url.split('/').pop()}</p>
+                        <p className="text-xs text-dark-text-secondary truncate">
+                          {img.imagem_url.split('/').pop()}
+                        </p>
                       </div>
-                      <button onClick={() => removeCarouselImage(img.id)} className="text-dark-text-secondary hover:text-accent-red p-1">
+                      <button
+                        onClick={() => removeCarouselImage(img.id)}
+                        className="text-dark-text-secondary hover:text-accent-red p-1"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -436,7 +483,7 @@ export default function AdminDashboard() {
 
           {/* COLUNA DIREITA: Social Media */}
           <div className="space-y-6">
-             <section className="bg-dark-bg-secondary border border-dark-border rounded-xl p-5">
+            <section className="bg-dark-bg-secondary border border-dark-border rounded-xl p-5">
               <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
                 <LayoutTemplate size={18} className="text-accent-purple" /> Posts do Instagram
               </h3>
@@ -461,12 +508,23 @@ export default function AdminDashboard() {
                   <p className="text-dark-text-secondary text-xs text-center py-4">Fila vazia.</p>
                 ) : (
                   instagramLinks.map((post, i) => (
-                    <div key={post.id} className="flex items-center gap-3 bg-dark-bg-primary p-3 rounded-lg border border-dark-border">
+                    <div
+                      key={post.id}
+                      className="flex items-center gap-3 bg-dark-bg-primary p-3 rounded-lg border border-dark-border"
+                    >
                       <span className="text-accent-blue font-bold text-xs w-4">{i + 1}</span>
-                      <a href={post.url} target="_blank" rel="noreferrer" className="flex-1 text-xs text-dark-text-primary hover:text-accent-blue truncate">
+                      <a
+                        href={post.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 text-xs text-dark-text-primary hover:text-accent-blue truncate"
+                      >
                         {post.url}
                       </a>
-                      <button onClick={() => removeInstagramLink(post.id)} className="text-dark-text-secondary hover:text-accent-red p-1">
+                      <button
+                        onClick={() => removeInstagramLink(post.id)}
+                        className="text-dark-text-secondary hover:text-accent-red p-1"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -475,10 +533,9 @@ export default function AdminDashboard() {
               </div>
             </section>
           </div>
-
         </div>
       </main>
-      
+
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
@@ -487,63 +544,6 @@ export default function AdminDashboard() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #334155;
-          border-radius: 4px;
-        }
-      `}</style>
-    </div>
-  );
-}
-                    <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-          </div>
-
-        </div>
-      </main>
-      
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #334155;
-          border-radius: 4px;
-        }
-      `}</style>
-    </div>
-  );
-}
->
-            </section>
-          </div>
-
-        </div>
-      </main>
-      
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #334155;
-          border-radius: 4px;
-        }
-      `}</style>
-    </div>
-  );
-}
- .custom-scrollbar::-webkit-scrollbar-thumb {
           background: #334155;
           border-radius: 4px;
         }

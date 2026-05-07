@@ -84,6 +84,7 @@ export function useTvData() {
 
   useEffect(() => {
     // Fetch initial data
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
 
     // Subscribe to realtime changes
