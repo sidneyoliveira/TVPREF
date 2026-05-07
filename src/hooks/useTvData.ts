@@ -10,6 +10,8 @@ export interface Configuracoes {
   announcement_title?: string;
   announcement_text?: string;
   show_instagram?: boolean;
+  aviso_bg_color?: string;
+  aviso_text_color?: string;
   updated_at?: string;
 }
 

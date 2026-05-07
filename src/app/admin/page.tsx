@@ -34,6 +34,8 @@ export default function AdminDashboard() {
   // Config state
   const [youtubeLink, setTvLink] = useState('');
   const [aviso, setAviso] = useState('');
+  const [avisoBgColor, setAvisoBgColor] = useState('#111111');
+  const [avisoTextColor, setAvisoTextColor] = useState('#ffffff');
   const [imageUrl, setImageUrl] = useState('');
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementText, setAnnouncementText] = useState('');
@@ -61,6 +63,8 @@ export default function AdminDashboard() {
     if (!loading && !hasInitialized && config.display_mode) {
       setTvLink(config.youtube_link || '');
       setAviso(config.texto_aviso || '');
+      setAvisoBgColor(config.aviso_bg_color || '#111111');
+      setAvisoTextColor(config.aviso_text_color || '#ffffff');
       setDisplayMode(config.display_mode || 'youtube');
       setImageUrl(config.image_url || '');
       setAnnouncementTitle(config.announcement_title || '');
@@ -106,6 +110,8 @@ export default function AdminDashboard() {
           ...config,
           youtube_link: youtubeLink,
           texto_aviso: aviso,
+          aviso_bg_color: avisoBgColor,
+          aviso_text_color: avisoTextColor,
           image_url: imageUrl,
           announcement_title: announcementTitle,
           announcement_text: announcementText,
@@ -130,6 +136,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           youtube_link: youtubeLink,
           texto_aviso: aviso,
+          aviso_bg_color: avisoBgColor,
+          aviso_text_color: avisoTextColor,
           display_mode: displayMode,
           image_url: imageUrl,
           announcement_title: announcementTitle,
@@ -425,12 +433,34 @@ export default function AdminDashboard() {
               <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
                 <Megaphone size={18} className="text-accent-yellow" /> Letreiro de Rodapé
               </h3>
-              <textarea
-                value={aviso}
-                onChange={(e) => setAviso(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-bg-primary border border-dark-border rounded-lg text-sm focus:border-accent-blue outline-none resize-none h-20"
-                placeholder="Aviso que passa embaixo na TV"
-              />
+              <div className="space-y-4">
+                <textarea
+                  value={aviso}
+                  onChange={(e) => setAviso(e.target.value)}
+                  className="w-full px-3 py-2 bg-dark-bg-primary border border-dark-border rounded-lg text-sm focus:border-accent-blue outline-none resize-none h-20"
+                  placeholder="Aviso que passa embaixo na TV"
+                />
+                <div className="flex gap-4">
+                  <div className="flex flex-col gap-1 w-1/2">
+                    <label className="text-xs text-dark-text-secondary font-bold">Cor de Fundo</label>
+                    <input
+                      type="color"
+                      value={avisoBgColor}
+                      onChange={(e) => setAvisoBgColor(e.target.value)}
+                      className="w-full h-10 rounded-lg cursor-pointer bg-dark-bg-primary border border-dark-border"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 w-1/2">
+                    <label className="text-xs text-dark-text-secondary font-bold">Cor do Texto</label>
+                    <input
+                      type="color"
+                      value={avisoTextColor}
+                      onChange={(e) => setAvisoTextColor(e.target.value)}
+                      className="w-full h-10 rounded-lg cursor-pointer bg-dark-bg-primary border border-dark-border"
+                    />
+                  </div>
+                </div>
+              </div>
             </section>
 
             <section className="bg-dark-bg-secondary border border-dark-border rounded-xl p-5">

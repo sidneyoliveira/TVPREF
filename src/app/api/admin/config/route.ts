@@ -9,11 +9,11 @@ const supabaseAdmin = createClient(
 
 export async function GET() {
   try {
-    // Tenta incluir show_instagram explicitamente
+    // Tenta incluir campos novos explicitamente
     try {
       const { data, error } = await supabaseAdmin
         .from('configuracoes')
-        .select('* , show_instagram')
+        .select('* , show_instagram, aviso_bg_color, aviso_text_color')
         .eq('id', 1)
         .single();
 
@@ -30,7 +30,7 @@ export async function GET() {
       })();
 
       // Se a coluna não existe no schema cache, devolve sem quebrar o painel.
-      if (errorText.includes('show_instagram') || (error as { code?: string })?.code === 'PGRST204') {
+      if (errorText.includes('show_instagram') || errorText.includes('aviso_bg_color') || (error as { code?: string })?.code === 'PGRST204') {
         const { data, error: errorWithout } = await supabaseAdmin
           .from('configuracoes')
           .select('*')
@@ -38,7 +38,7 @@ export async function GET() {
           .single();
 
         if (errorWithout) throw errorWithout;
-        return NextResponse.json({ ...data, show_instagram: false });
+        return NextResponse.json({ ...data, show_instagram: false, aviso_bg_color: '#111111', aviso_text_color: '#ffffff' });
       }
 
       throw error;
@@ -59,6 +59,8 @@ export async function POST(request: Request) {
       announcement_title,
       announcement_text,
       show_instagram,
+      aviso_bg_color,
+      aviso_text_color,
     } = body;
 
     const baseUpdate = {
@@ -71,16 +73,18 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    // Tenta primeiro com show_instagram (quando existir no schema)
+    // Tenta primeiro com campos novos
     try {
-      const updateWithInstagram = {
+      const fullUpdate = {
         ...baseUpdate,
         show_instagram,
+        aviso_bg_color,
+        aviso_text_color,
       };
 
       const { data, error } = await supabaseAdmin
         .from('configuracoes')
-        .update(updateWithInstagram)
+        .update(fullUpdate)
         .eq('id', 1)
         .select();
 
@@ -97,7 +101,7 @@ export async function POST(request: Request) {
       })();
 
       // Se a coluna ainda não existe (migration pendente), salva sem ela.
-      if (errorText.includes('show_instagram') || (error as { code?: string })?.code === 'PGRST204') {
+      if (errorText.includes('show_instagram') || errorText.includes('aviso_bg_color') || (error as { code?: string })?.code === 'PGRST204') {
         const { data, error: errorWithout } = await supabaseAdmin
           .from('configuracoes')
           .update(baseUpdate)
