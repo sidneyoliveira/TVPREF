@@ -9,14 +9,40 @@ const supabaseAdmin = createClient(
 
 export async function GET() {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('configuracoes')
-      .select('*')
-      .eq('id', 1)
-      .single();
+    // Tenta incluir show_instagram explicitamente
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('configuracoes')
+        .select('* , show_instagram')
+        .eq('id', 1)
+        .single();
 
-    if (error) throw error;
-    return NextResponse.json(data);
+      if (error) throw error;
+      return NextResponse.json(data);
+    } catch (error) {
+      const errorText = (() => {
+        try {
+          if (error instanceof Error) return error.message;
+          return JSON.stringify(error);
+        } catch {
+          return String(error);
+        }
+      })();
+
+      // Se a coluna não existe no schema cache, devolve sem quebrar o painel.
+      if (errorText.includes('show_instagram') || (error as { code?: string })?.code === 'PGRST204') {
+        const { data, error: errorWithout } = await supabaseAdmin
+          .from('configuracoes')
+          .select('*')
+          .eq('id', 1)
+          .single();
+
+        if (errorWithout) throw errorWithout;
+        return NextResponse.json({ ...data, show_instagram: false });
+      }
+
+      throw error;
+    }
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao buscar configurações' }, { status: 500 });
   }
@@ -61,10 +87,17 @@ export async function POST(request: Request) {
       if (error) throw error;
       return NextResponse.json(data[0]);
     } catch (error) {
-      const maybeCode = (error as { code?: string })?.code;
+      const errorText = (() => {
+        try {
+          if (error instanceof Error) return error.message;
+          return JSON.stringify(error);
+        } catch {
+          return String(error);
+        }
+      })();
 
       // Se a coluna ainda não existe (migration pendente), salva sem ela.
-      if (maybeCode === 'PGRST204') {
+      if (errorText.includes('show_instagram') || (error as { code?: string })?.code === 'PGRST204') {
         const { data, error: errorWithout } = await supabaseAdmin
           .from('configuracoes')
           .update(baseUpdate)

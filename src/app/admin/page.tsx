@@ -361,17 +361,25 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center justify-between gap-4 mb-4">
-            <div className="text-sm font-bold text-white">Instagram ao lado</div>
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-white">Instagram ao lado</div>
+              <div className="text-xs text-dark-text-secondary mt-1">
+                {showInstagram
+                  ? 'Ligado: exibe Instagram junto com o modo atual (YouTube/Aviso/Imagem).'
+                  : 'Desligado: exibe somente o modo atual (sem Instagram).'}
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={toggleShowInstagram}
-              className={`px-4 py-2 rounded-lg border text-sm font-bold transition-colors ${
+              className={`px-4 py-2 rounded-xl border text-sm font-bold transition-colors shadow-sm ${
                 showInstagram
                   ? 'bg-accent-blue border-accent-blue text-white'
                   : 'bg-dark-bg-primary border-dark-border text-dark-text-secondary hover:border-dark-text-secondary'
               }`}
             >
-              {showInstagram ? 'ON' : 'OFF'}
+              {showInstagram ? 'LIGADO' : 'DESLIGADO'}
             </button>
           </div>
 
