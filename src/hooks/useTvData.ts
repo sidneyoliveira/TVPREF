@@ -23,23 +23,27 @@ export function useTvData() {
   const fetchData = async () => {
     try {
       // Fetch Config
-      const { data: configData } = await supabase
+      const { data: configData, error: configError } = await supabase
         .from('configuracoes')
         .select('*')
         .eq('id', 1)
         .single();
       
-      if (configData) {
+      if (configError) {
+        console.error('Erro ao buscar configurações:', configError);
+      } else if (configData) {
         setConfig(configData);
       }
 
       // Fetch Instagram Links
-      const { data: instaData } = await supabase
+      const { data: instaData, error: instaError } = await supabase
         .from('instagram_links')
         .select('*')
         .order('ordem', { ascending: true });
       
-      if (instaData) {
+      if (instaError) {
+        console.error('Erro ao buscar links:', instaError);
+      } else if (instaData) {
         setInstagramLinks(instaData);
       }
     } catch (error) {
@@ -53,55 +57,43 @@ export function useTvData() {
     // Fetch initial data
     fetchData();
 
-    // Subscribe to realtime changes for configuracoes
-    const configSubscription = supabase
-      .channel('configuracoes-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'configuracoes' }, (payload) => {
-        console.log('Config updated:', payload);
-        setConfig(payload.new as Configuracoes);
-      })
-      .subscribe();
+    // Subscribe to realtime changes
+    const subscription = supabase
+      .channel('public:changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'configuracoes',
+        },
+        (payload) => {
+          console.log('Configuração atualizada:', payload);
+          if (payload.new) {
+            setConfig(payload.new as Configuracoes);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'instagram_links',
+        },
+        (payload) => {
+          console.log('Links do Instagram atualizados:', payload);
+          // Refetch para garantir ordem correta
+          fetchData();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
 
-    // Subscribe to realtime changes for instagram_links
-    const instaSubscription = supabase
-      .channel('instagram-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'instagram_links' }, () => {
-        // Refetch instagram links when they change
-        fetchData();
-      })
-      .subscribe();
-
-    // Cleanup subscriptions
+    // Cleanup subscription
     return () => {
-      configSubscription.unsubscribe();
-      instaSubscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-
-    // Listen to changes in the 'configuracoes' table
-    const configSubscription = supabase
-      .channel('config-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'configuracoes' }, (payload) => {
-        console.log('Nova configuração recebida:', payload);
-        fetchData();
-      })
-      .subscribe();
-
-    // Listen to changes in the 'instagram_links' table
-    const instagramSubscription = supabase
-      .channel('insta-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'instagram_links' }, (payload) => {
-        console.log('Novo link de instagram recebido:', payload);
-        fetchData();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(configSubscription);
-      supabase.removeChannel(instagramSubscription);
+      supabase.removeChannel(subscription);
     };
   }, []);
 
