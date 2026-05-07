@@ -38,7 +38,10 @@ export default function AdminDashboard() {
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementText, setAnnouncementText] = useState('');
 
-  // Instagram state
+  // Instagram side toggle (“Instagram ao lado”)
+  const [showInstagram, setShowInstagram] = useState(false);
+
+  // Instagram state (queue)
   const [newInstaUrl, setNewInstaUrl] = useState('');
 
   // Carousel state
@@ -62,6 +65,7 @@ export default function AdminDashboard() {
       setImageUrl(config.image_url || '');
       setAnnouncementTitle(config.announcement_title || '');
       setAnnouncementText(config.announcement_text || '');
+      setShowInstagram(Boolean(config.show_instagram));
       setHasInitialized(true);
     }
   }, [config, loading, hasInitialized]);
@@ -106,6 +110,7 @@ export default function AdminDashboard() {
           announcement_title: announcementTitle,
           announcement_text: announcementText,
           display_mode: mode,
+          show_instagram: showInstagram,
         }),
       });
       if (!res.ok) throw new Error();
@@ -129,6 +134,7 @@ export default function AdminDashboard() {
           image_url: imageUrl,
           announcement_title: announcementTitle,
           announcement_text: announcementText,
+          show_instagram: showInstagram,
         }),
       });
 
@@ -142,6 +148,35 @@ export default function AdminDashboard() {
     }
   };
 
+  const toggleShowInstagram = async () => {
+    const next = !showInstagram;
+    setShowInstagram(next);
+
+    // Salva imediatamente para refletir na TV
+    try {
+      const res = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...config,
+          youtube_link: youtubeLink,
+          texto_aviso: aviso,
+          image_url: imageUrl,
+          announcement_title: announcementTitle,
+          announcement_text: announcementText,
+          display_mode: displayMode,
+          show_instagram: next,
+        }),
+      });
+
+      if (!res.ok) throw new Error();
+      toast.success(next ? 'Instagram ao lado: ON' : 'Instagram ao lado: OFF');
+      refetch();
+    } catch {
+      toast.error('Erro ao salvar a opção do Instagram.');
+    }
+  };
+
   const uploadFileToSupabase = async (file: File): Promise<string | null> => {
     try {
       setIsUploading(true);
@@ -149,7 +184,10 @@ export default function AdminDashboard() {
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
       const filePath = `uploads/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file);
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(filePath, file);
+
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from('media').getPublicUrl(filePath);
@@ -247,7 +285,13 @@ export default function AdminDashboard() {
         <form onSubmit={handleLogin} className="w-full max-w-sm">
           <div className="bg-dark-bg-secondary border border-dark-border rounded-2xl p-8 shadow-2xl">
             <div className="flex justify-center mb-6">
-              <Image src={logoBranca} alt="Logo" height={60} className="object-contain" priority />
+              <Image
+                src={logoBranca}
+                alt="Logo"
+                height={60}
+                className="object-contain"
+                priority
+              />
             </div>
             <h2 className="text-2xl font-bold text-white text-center mb-1">Painel TV</h2>
             <p className="text-dark-text-secondary text-center mb-8 text-sm">Sistema de Comunicação</p>
@@ -282,7 +326,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-dark-bg-primary font-sans text-dark-text-primary pb-12">
-      {/* Header Compacto */}
       <header className="bg-dark-bg-secondary border-b border-dark-border sticky top-0 z-50 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -294,6 +337,7 @@ export default function AdminDashboard() {
               <p className="text-dark-text-secondary text-xs">Transmissão em Tempo Real</p>
             </div>
           </div>
+
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 text-dark-text-secondary hover:text-accent-red transition-colors text-sm font-semibold"
@@ -314,6 +358,21 @@ export default function AdminDashboard() {
             <span className="bg-accent-red/20 text-accent-red px-3 py-1 rounded-full text-xs font-bold animate-pulse">
               ON AIR
             </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="text-sm font-bold text-white">Instagram ao lado</div>
+            <button
+              type="button"
+              onClick={toggleShowInstagram}
+              className={`px-4 py-2 rounded-lg border text-sm font-bold transition-colors ${
+                showInstagram
+                  ? 'bg-accent-blue border-accent-blue text-white'
+                  : 'bg-dark-bg-primary border-dark-border text-dark-text-secondary hover:border-dark-text-secondary'
+              }`}
+            >
+              {showInstagram ? 'ON' : 'OFF'}
+            </button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -338,9 +397,8 @@ export default function AdminDashboard() {
           </div>
         </section>
 
-        {/* PAINEL DE EDIÇÃO (GRID COMPACTO) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* COLUNA ESQUERDA: Textos e Tv */}
+          {/* COLUNA ESQUERDA */}
           <div className="space-y-6">
             <section className="bg-dark-bg-secondary border border-dark-border rounded-xl p-5">
               <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
@@ -397,7 +455,7 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          {/* COLUNA DO MEIO: Mídias (Imagem e Carrossel) */}
+          {/* COLUNA MEIO */}
           <div className="space-y-6">
             <section className="bg-dark-bg-secondary border border-dark-border rounded-xl p-5">
               <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
@@ -481,7 +539,7 @@ export default function AdminDashboard() {
             </section>
           </div>
 
-          {/* COLUNA DIREITA: Social Media */}
+          {/* COLUNA DIREITA */}
           <div className="space-y-6">
             <section className="bg-dark-bg-secondary border border-dark-border rounded-xl p-5">
               <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">

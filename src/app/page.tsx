@@ -9,7 +9,7 @@ import { DisplayImage } from '@/components/DisplayImage';
 import { DisplayAnnouncement } from '@/components/DisplayAnnouncement';
 import { DisplayCarousel } from '@/components/DisplayCarousel';
 import { DisplaySplit } from '@/components/DisplaySplit';
-import { Megaphone } from 'lucide-react';
+import { DisplayWithOptionalInstagram } from '@/components/DisplayWithOptionalInstagram';
 import Image from 'next/image';
 import logoBranca from '@/img/logo_branca.png';
 
@@ -31,6 +31,12 @@ export default function TvScreen() {
   }
 
   const renderDisplayMode = () => {
+    // Instagram opcional ao lado: só aplicamos nos modos "conteúdo principal" (não no carousel,
+    // porque o carousel já ocupa 100% da tela).
+    if (config.show_instagram && config.display_mode !== 'carousel') {
+      return <DisplayWithOptionalInstagram config={config} instagramLinks={instagramLinks} />;
+    }
+
     switch (config.display_mode) {
       case 'image':
         return (
@@ -71,8 +77,7 @@ export default function TvScreen() {
             {format(currentDateTime, 'HH:mm')}
           </p>
           <p className="text-sm text-dark-text-secondary font-medium whitespace-nowrap text-center w-full uppercase tracking-wider">
-            {format(currentDateTime, 'EEEE', { locale: ptBR }).split('-')[0]} -{' '}
-            {format(currentDateTime, 'dd/MM/yyyy')}
+            {format(currentDateTime, 'EEEE', { locale: ptBR }).split('-')[0]} - {format(currentDateTime, 'dd/MM/yyyy')}
           </p>
         </div>
       </header>
@@ -80,12 +85,9 @@ export default function TvScreen() {
       <main className="flex-1 overflow-hidden bg-black">{renderDisplayMode()}</main>
 
       {config.texto_aviso && (
-        <footer className="bg-accent-blue py-3 px-6 border-t-4 border-accent-yellow flex items-center gap-4 shadow-lg z-10">
-          <div className="bg-accent-yellow p-2 rounded-lg text-dark-bg-primary">
-            <Megaphone size={24} strokeWidth={2.5} />
-          </div>
-          <div className="flex-1">
-            <p className="text-2xl font-bold text-white uppercase tracking-wide leading-tight">
+        <footer className="bg-dark-bg-secondary py-3 px-6 border-t border-dark-border flex items-center shadow-lg z-10">
+          <div className="flex-1 min-w-0">
+            <p className="text-2xl font-bold text-white uppercase tracking-wide leading-tight truncate">
               {config.texto_aviso}
             </p>
           </div>
