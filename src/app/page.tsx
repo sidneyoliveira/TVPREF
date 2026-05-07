@@ -2,32 +2,23 @@
 
 import { useTvData } from '@/hooks/useTvData';
 import { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
-// Disable SSR for ReactPlayer to avoid hydration errors and type issues with React 19
-const ReactPlayer: any = dynamic(() => import('react-player'), { ssr: false });
+import { DisplayYoutube } from '@/components/DisplayYoutube';
+import { DisplayImage } from '@/components/DisplayImage';
+import { DisplayAnnouncement } from '@/components/DisplayAnnouncement';
+import { DisplayCarousel } from '@/components/DisplayCarousel';
+import { DisplaySplit } from '@/components/DisplaySplit';
 
 export default function TvScreen() {
-  const { config, instagramLinks, loading } = useTvData();
+  const { config, instagramLinks, carouselImages, loading } = useTvData();
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
-  const [currentInstaIndex, setCurrentInstaIndex] = useState(0);
 
   // Update clock every second
   useEffect(() => {
     const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  // Rotate Instagram posts every 15 seconds
-  useEffect(() => {
-    if (instagramLinks.length <= 1) return;
-    const timer = setInterval(() => {
-      setCurrentInstaIndex((prev) => (prev + 1) % instagramLinks.length);
-    }, 15000);
-    return () => clearInterval(timer);
-  }, [instagramLinks]);
 
   if (loading) {
     return (
@@ -37,105 +28,69 @@ export default function TvScreen() {
     );
   }
 
-  // Format Instagram URL to use embed layout
-  const getInstaEmbedUrl = (url: string) => {
-    try {
-      const parsedUrl = new URL(url);
-      // Remove trailing slash and append /embed
-      const cleanPath = parsedUrl.pathname.replace(/\/$/, '');
-      return `https://www.instagram.com${cleanPath}/embed`;
-    } catch {
-      return '';
+  // Renderizar o modo de exibição selecionado
+  const renderDisplayMode = () => {
+    switch (config.display_mode) {
+      case 'image':
+        return (
+          <DisplayImage
+            imageUrl={config.image_url || ''}
+            title={config.announcement_title}
+            description={config.announcement_text}
+          />
+        );
+      case 'announcement':
+        return (
+          <DisplayAnnouncement
+            title={config.announcement_title || 'Aviso Importante'}
+            text={config.announcement_text || 'Nenhum aviso configurado'}
+          />
+        );
+      case 'carousel':
+        return <DisplayCarousel images={carouselImages} />;
+      case 'split':
+        return <DisplaySplit config={config} instagramLinks={instagramLinks} />;
+      case 'youtube':
+      default:
+        return <DisplayYoutube youtubeLink={config.youtube_link || ''} />;
     }
   };
 
-  const currentInstaPost = instagramLinks[currentInstaIndex];
-
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gray-900 text-white">
+    <div className="flex flex-col h-screen overflow-hidden bg-black text-white">
       {/* HEADER */}
-      <header className="flex justify-between items-center px-8 py-4 bg-blue-900 shadow-md z-10">
+      <header className="flex justify-between items-center px-8 py-4 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 shadow-lg z-10">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-blue-900 font-bold text-xl">
-            LOGO
+          <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-blue-900 font-black text-2xl shadow-lg">
+            🏛️
           </div>
-          <h1 className="text-4xl font-bold uppercase tracking-wider">
+          <h1 className="text-4xl font-black uppercase tracking-wider drop-shadow-lg">
             Prefeitura de Itarema
           </h1>
         </div>
-        <div className="text-right">
-          <p className="text-4xl font-bold">
+        <div className="text-right bg-black/40 px-6 py-3 rounded-lg backdrop-blur-sm">
+          <p className="text-4xl font-bold tabular-nums">
             {format(currentDateTime, 'HH:mm:ss')}
           </p>
-          <p className="text-xl text-blue-200 capitalize">
+          <p className="text-lg text-blue-200 capitalize font-semibold">
             {format(currentDateTime, "EEEE, d 'de' MMMM", { locale: ptBR })}
           </p>
         </div>
       </header>
 
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-row overflow-hidden">
-        {/* LEFT/MAIN: YouTube Live Stream */}
-        <div className="flex-[3] bg-black relative shadow-inner">
-          {config.youtube_link ? (
-            <ReactPlayer
-              url={config.youtube_link}
-              playing
-              muted
-              controls={false}
-              width="100%"
-              height="100%"
-              style={{ position: 'absolute', top: 0, left: 0 }}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-gray-500 text-2xl">Aguardando transmissão ao vivo...</p>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT: Sidebar (Instagram + Infos) */}
-        <aside className="flex-1 flex flex-col bg-gray-800 border-l border-gray-700">
-          <div className="bg-blue-800 py-3 text-center">
-            <h2 className="text-2xl font-bold uppercase tracking-widest text-blue-100">
-              Mural Social
-            </h2>
-          </div>
-          
-          <div className="flex-1 p-4 flex flex-col items-center justify-center relative bg-white/5">
-            {currentInstaPost ? (
-              <iframe
-                src={getInstaEmbedUrl(currentInstaPost.url)}
-                className="w-full h-full max-h-[800px] border-none rounded-xl shadow-lg bg-white"
-                scrolling="no"
-              ></iframe>
-            ) : (
-              <p className="text-gray-400 text-center text-xl">Nenhuma postagem disponível no momento.</p>
-            )}
-            
-            {/* Carousel Indicator */}
-            {instagramLinks.length > 1 && (
-              <div className="absolute bottom-6 flex gap-2">
-                {instagramLinks.map((_, i) => (
-                  <div 
-                    key={i} 
-                    className={`h-3 w-3 rounded-full transition-all ${i === currentInstaIndex ? 'bg-blue-500 scale-125' : 'bg-gray-500'}`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </aside>
+      {/* MAIN CONTENT */}
+      <main className="flex-1 overflow-hidden">
+        {renderDisplayMode()}
       </main>
 
-      {/* FOOTER: Scrolling Text (Marquee) */}
-      <footer className="bg-blue-600 py-4 overflow-hidden border-t-4 border-yellow-400">
-        <div className="whitespace-nowrap animate-[marquee_20s_linear_infinite] flex items-center">
-          <span className="text-4xl font-semibold mr-16 text-white uppercase">
-            {config.texto_aviso || "Bem-vindo à Prefeitura."}
+      {/* FOOTER - Scrolling Text */}
+      <footer className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 py-4 overflow-hidden border-t-4 border-yellow-500 shadow-xl">
+        <div className="whitespace-nowrap animate-[marquee_25s_linear_infinite] flex items-center">
+          <span className="text-3xl font-black mr-12 text-white uppercase drop-shadow-lg">
+            📢 {config.texto_aviso || "Bem-vindo à Prefeitura Municipal de Itarema"}
           </span>
-          <span className="text-4xl font-semibold mr-16 text-white uppercase">
-            {config.texto_aviso || "Bem-vindo à Prefeitura."}
+          <span className="text-3xl font-black mr-12 text-white uppercase drop-shadow-lg">
+            📢 {config.texto_aviso || "Bem-vindo à Prefeitura Municipal de Itarema"}
           </span>
         </div>
       </footer>

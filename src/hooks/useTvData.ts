@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export interface Configuracoes {
+  id?: number;
   youtube_link: string;
   texto_aviso: string;
+  display_mode: 'youtube' | 'image' | 'announcement' | 'carousel' | 'split';
+  image_url?: string;
+  announcement_title?: string;
+  announcement_text?: string;
+  updated_at?: string;
 }
 
 export interface InstagramLink {
@@ -12,15 +18,25 @@ export interface InstagramLink {
   ordem: number;
 }
 
+export interface CarouselImage {
+  id: string;
+  imagem_url: string;
+  titulo?: string;
+  descricao?: string;
+  ordem: number;
+}
+
 export function useTvData() {
   const [config, setConfig] = useState<Configuracoes>({
     youtube_link: '',
     texto_aviso: 'Aguardando configurações...',
+    display_mode: 'youtube',
   });
   const [instagramLinks, setInstagramLinks] = useState<InstagramLink[]>([]);
+  const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       // Fetch Config
       const { data: configData, error: configError } = await supabase
@@ -46,12 +62,24 @@ export function useTvData() {
       } else if (instaData) {
         setInstagramLinks(instaData);
       }
+
+      // Fetch Carousel Images
+      const { data: carouselData, error: carouselError } = await supabase
+        .from('carousel_images')
+        .select('*')
+        .order('ordem', { ascending: true });
+      
+      if (carouselError) {
+        console.error('Erro ao buscar carrossel:', carouselError);
+      } else if (carouselData) {
+        setCarouselImages(carouselData);
+      }
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     // Fetch initial data
@@ -59,7 +87,7 @@ export function useTvData() {
 
     // Subscribe to realtime changes
     const subscription = supabase
-      .channel('public:changes')
+      .channel('public:all-changes')
       .on(
         'postgres_changes',
         {
@@ -68,7 +96,7 @@ export function useTvData() {
           table: 'configuracoes',
         },
         (payload) => {
-          console.log('Configuração atualizada:', payload);
+          console.log('Configuração atualizada via realtime:', payload);
           if (payload.new) {
             setConfig(payload.new as Configuracoes);
           }
@@ -81,21 +109,32 @@ export function useTvData() {
           schema: 'public',
           table: 'instagram_links',
         },
-        (payload) => {
-          console.log('Links do Instagram atualizados:', payload);
-          // Refetch para garantir ordem correta
+        () => {
+          console.log('Instagram links atualizados');
+          fetchData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'carousel_images',
+        },
+        () => {
+          console.log('Carousel images atualizadas');
           fetchData();
         }
       )
       .subscribe((status) => {
-        console.log('Subscription status:', status);
+        console.log('Realtime subscription status:', status);
       });
 
     // Cleanup subscription
     return () => {
       supabase.removeChannel(subscription);
     };
-  }, []);
+  }, [fetchData]);
 
-  return { config, instagramLinks, loading };
+  return { config, instagramLinks, carouselImages, loading, refetch: fetchData };
 }
