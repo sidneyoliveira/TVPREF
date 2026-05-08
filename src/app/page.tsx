@@ -42,36 +42,30 @@ export default function TvScreen() {
     horario: '--:--',
   });
 
-  // Atualiza o relógio a cada segundo
   useEffect(() => {
     const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const headerDate = useMemo(() => {
-    return format(currentDateTime, 'dd/MM/yyyy');
-  }, [currentDateTime]);
+  const headerDate = useMemo(() => format(currentDateTime, 'dd/MM/yyyy'), [currentDateTime]);
 
-  // Carrega Clima (Externo) e Maré (Do nosso próprio banco/API)
+  // Carrega Clima (Open-Meteo) e Maré (Nosso Scraper sem limites)
   useEffect(() => {
     let cancelled = false;
 
     async function loadData() {
       try {
         const [resWeather, resTide] = await Promise.all([
-          // Busca clima grátis (Open-Meteo)
           weatherLat && weatherLon ? fetch(
             `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(weatherLat)}&longitude=${encodeURIComponent(weatherLon)}&current=temperature_2m&timezone=UTC`,
             { cache: 'no-store' }
           ).catch(() => null) : null,
           
-          // Busca maré limpa (Nossa API do banco de dados)
           fetch('/api/tide', { cache: 'no-store' }).catch(() => null)
         ]);
 
         if (cancelled) return;
 
-        // Trata Temperatura
         if (resWeather?.ok) {
           const jsonW = await resWeather.json();
           if (typeof jsonW.current?.temperature_2m === 'number') {
@@ -79,7 +73,6 @@ export default function TvScreen() {
           }
         }
 
-        // Trata Maré do Banco
         if (resTide?.ok) {
           const tideData = await resTide.json();
           if (tideData.horario) {
@@ -92,9 +85,7 @@ export default function TvScreen() {
     }
 
     loadData();
-    // Atualiza a tela a cada 10 min. 
-    // Nossa rota de API só vai chamar a Stormglass a cada 12h, protegendo nossa cota!
-    const t = setInterval(loadData, 10 * 60 * 1000); 
+    const t = setInterval(loadData, 10 * 60 * 1000); // 10 minutos
     
     return () => {
       cancelled = true;
@@ -155,7 +146,6 @@ export default function TvScreen() {
 
   return (
     <div className="flex flex-col h-screen w-full bg-linear-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-dark-text-primary font-sans">
-      {/* HEADER PROFISSIONAL */}
       <header className="relative flex items-center justify-between w-full h-30 z-10 shadow-lg bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
         <div className="flex items-center h-full pl-[4vw]">
           <Image
@@ -178,7 +168,6 @@ export default function TvScreen() {
         </div>
       </header>
 
-      {/* MAIN */}
       <main className="flex-1 w-full min-h-0 h-0 overflow-hidden relative flex">
         <div className="flex-1 h-full w-full flex flex-col">
           <div className="flex-1 h-full w-full flex flex-col justify-stretch items-stretch">
@@ -187,7 +176,6 @@ export default function TvScreen() {
         </div>
       </main>
 
-      {/* FOOTER PROFISSIONAL */}
       <footer className="w-full py-3 px-[4vw] bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] border-t border-[#1a2a44] flex items-center justify-between gap-8 shadow-lg z-10 min-h-17.5 max-h-22.5">
         <div className="flex-1 text-left">
           {config.texto_aviso ? (
@@ -204,9 +192,7 @@ export default function TvScreen() {
           )}
         </div>
 
-        {/* INFORMAÇÕES DO CLIMA E MARÉ */}
         <div className="flex items-center justify-between gap-6 shrink-0 bg-[#102040]/80 px-6 py-3 rounded-2xl border border-[#1a2a44] min-w-[280px]">
-          {/* TEMPERATURA */}
           <div className="flex flex-col items-center flex-1">
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-blue-300 mb-1">
               Temperatura
@@ -218,10 +204,8 @@ export default function TvScreen() {
             </span>
           </div>
 
-          {/* DIVISOR */}
           <div className="h-10 w-px bg-blue-500/30"></div>
 
-          {/* MARÉ DA API COM DB */}
           <div className="flex flex-col items-center flex-1 min-w-[120px]">
             <span className="text-sm uppercase tracking-wider font-bold text-white mb-0.5 drop-shadow-sm">
               MARÉ {tide.tendencia}

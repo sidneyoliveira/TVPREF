@@ -1,68 +1,64 @@
 // src/app/api/tide/route.ts
-import { supabase } from '@/lib/supabase';
+import * as cheerio from 'cheerio';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // 1. Pega os dados salvos no banco usando maybeSingle() para não dar erro se estiver vazio
-    const { data: cache, error: cacheError } = await supabase
-      .from('tide_cache')
-      .select('*')
-      .eq('id', 1)
-      .maybeSingle(); 
-    
-    let extremes = [];
-    const now = new Date();
-    
-    // Verifica se não tem cache ou se ele é mais velho que 12 horas
-    const isCacheOld = cache ? (now.getTime() - new Date(cache.updated_at).getTime() > 12 * 60 * 60 * 1000) : true;
+    // 1. Acessa a página de Acaraú invisivelmente.
+    // O Next.js fará um cache de 1 hora (3600s), ou seja, a TV pode dar F5 o dia todo 
+    // que o sistema só visita o site deles 1 vez por hora. Zero bloqueios!
+    const response = await fetch('https://tabuademares.com/br/ceara/itarema', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'pt-BR,pt;q=0.9'
+      },
+      next: { revalidate: 3600 } 
+    });
 
-    if (isCacheOld || !cache?.data?.length) {
-      // Baixa os dados da Stormglass
-      const start = Math.floor(now.getTime() / 1000);
-      const end = start + (7 * 24 * 60 * 60);
-      const lat = process.env.NEXT_PUBLIC_WEATHER_LAT;
-      const lng = process.env.NEXT_PUBLIC_WEATHER_LON;
+    if (!response.ok) throw new Error('Falha ao acessar tabuademares.com');
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const bodyText = $('body').text().replace(/\s+/g, ' '); 
+
+    // 2. Caça os horários das SEGUINTES marés no meio do texto
+    const matchBaixa = bodyText.match(/seguinte baixa-mar será às (\d{1,2}:\d{2})/i);
+    const matchAlta = bodyText.match(/seguinte preia-mar será às (\d{1,2}:\d{2})/i);
+
+    const proximaBaixa = matchBaixa ? matchBaixa[1] : null;
+    const proximaAlta = matchAlta ? matchAlta[1] : null;
+
+    if (!proximaBaixa && !proximaAlta) {
+      return NextResponse.json({ tendencia: '--', tipo: '--', horario: '--:--' });
+    }
+
+    // 3. Descobre quem vem primeiro baseando-se no horário atual de Fortaleza
+    const brtTime = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Fortaleza" }));
+    const currentMins = brtTime.getHours() * 60 + brtTime.getMinutes();
+
+    const getAbsoluteMinutes = (timeStr: string | null) => {
+      if (!timeStr) return Infinity;
+      const [h, m] = timeStr.split(':').map(Number);
+      let mins = h * 60 + m;
       
-      const res = await fetch(`https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}&start=${start}&end=${end}`, {
-        headers: { 'Authorization': process.env.STORMGLASS_API_KEY || '' }
-      });
+      // Se a maré for na madrugada seguinte, soma um dia
+      if (mins < currentMins) mins += 24 * 60; 
       
-      if (res.ok) {
-        const json = await res.json();
-        extremes = json.data; 
-        
-        // Salva/Atualiza no banco de dados
-        await supabase.from('tide_cache').upsert({ 
-          id: 1, 
-          data: extremes, 
-          updated_at: now.toISOString() 
-        });
-      } else if (cache) {
-        extremes = cache.data; // Se der erro na API, usa o banco antigo
-      }
+      return mins;
+    };
+
+    const minsBaixa = getAbsoluteMinutes(proximaBaixa);
+    const minsAlta = getAbsoluteMinutes(proximaAlta);
+
+    // 4. Devolve o dado certinho para o Front-End
+    if (minsAlta < minsBaixa) {
+      return NextResponse.json({ tendencia: 'SUBINDO', tipo: 'CHEIA', horario: proximaAlta });
     } else {
-      extremes = cache.data; // Se o banco for novo, usa ele
+      return NextResponse.json({ tendencia: 'DESCENDO', tipo: 'BAIXA', horario: proximaBaixa });
     }
-
-    // 2. Acha qual é a PRÓXIMA maré
-    const nextExtreme = extremes.find((t: any) => new Date(t.time).getTime() > now.getTime());
-    
-    if (nextExtreme) {
-      const date = new Date(nextExtreme.time);
-      const isHigh = nextExtreme.type === 'high';
-      
-      return NextResponse.json({
-        tendencia: isHigh ? 'SUBINDO' : 'DESCENDO',
-        tipo: isHigh ? 'CHEIA' : 'BAIXA',
-        horario: date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      });
-    }
-
-    return NextResponse.json({ tendencia: '--', tipo: '--', horario: '--:--' });
 
   } catch (error) {
-    console.error("Erro na API de Maré:", error);
-    return NextResponse.json({ error: 'Falha ao buscar maré' }, { status: 500 });
+    console.error("Erro no Scraper de Maré:", error);
+    return NextResponse.json({ error: 'Falha ao buscar maré oficial' }, { status: 500 });
   }
 }
