@@ -19,7 +19,7 @@ export function DisplayYoutube({ youtubeLink }: DisplayYoutubeProps) {
 
   if (!embedUrl) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-black">
+      <div className="tv-legacy tv-panel w-full h-full flex items-center justify-center bg-black">
         <div className="text-center">
           <div className="text-6xl mb-4">▶️</div>
           <p className="text-3xl text-gray-400 font-semibold">Aguardando transmissão ao vivo...</p>
@@ -29,7 +29,7 @@ export function DisplayYoutube({ youtubeLink }: DisplayYoutubeProps) {
   }
 
   return (
-    <div className="w-full h-full bg-black relative overflow-hidden pointer-events-none">
+    <div className="tv-legacy tv-panel w-full h-full bg-black relative overflow-hidden pointer-events-none">
       <iframe
         src={embedUrl}
         className="w-full h-full border-0"

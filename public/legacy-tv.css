@@ -1,0 +1,109 @@
+/* Legacy TV fallback stylesheet for older Samsung/embedded browsers */
+#tv-legacy-root, #tv-legacy-root * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif !important;
+  color: #ffffff !important;
+}
+
+#tv-legacy-root {
+  background: #0d1a2f;
+  min-height: 100vh;
+  width: 100%;
+}
+
+#tv-legacy-root header,
+#tv-legacy-root footer,
+#tv-legacy-root .tv-panel,
+#tv-legacy-root .tv-content {
+  display: block;
+  width: 100%;
+  background: #0b1230;
+  padding: 16px;
+  border: 1px solid #123a6d;
+}
+
+#tv-legacy-root header {
+  background: #0d1a2f;
+  border-bottom: 2px solid #123a6d;
+}
+
+#tv-legacy-root footer {
+  background: #0d1a2f;
+  border-top: 2px solid #123a6d;
+}
+
+#tv-legacy-root .tv-header-left,
+#tv-legacy-root .tv-header-right {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+#tv-legacy-root .tv-header-left {
+  width: 55%;
+}
+
+#tv-legacy-root .tv-header-right {
+  width: 40%;
+  text-align: right;
+}
+
+#tv-legacy-root .tv-main {
+  padding: 16px;
+  background: #071121;
+}
+
+#tv-legacy-root .tv-content {
+  background: #071121;
+  border: 1px solid #1d2b47;
+  padding: 16px;
+}
+
+#tv-legacy-root .tv-fallback-title {
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+#tv-legacy-root .tv-fallback-subtitle {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+#tv-legacy-root .tv-hero {
+  text-align: center;
+  padding: 12px;
+}
+
+#tv-legacy-root .tv-panel {
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+#tv-legacy-root img,
+#tv-legacy-root iframe,
+#tv-legacy-root video {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border: none;
+}
+
+#tv-legacy-root .tv-box {
+  padding: 16px;
+  background: #12203a;
+  border: 1px solid #1f2d4a;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+#tv-legacy-root .tv-button {
+  display: inline-block;
+  padding: 10px 16px;
+  background: #4ade80;
+  color: #0d1a2f !important;
+  text-decoration: none;
+  border-radius: 6px;
+}

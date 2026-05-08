@@ -7,14 +7,14 @@ interface DisplayImageProps {
 export function DisplayImage({ imageUrl, title, description }: DisplayImageProps) {
   if (!imageUrl) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
+      <div className="tv-legacy tv-panel w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
         <p className="text-3xl text-gray-500">Nenhuma imagem configurada</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full relative bg-black flex flex-col items-center justify-center overflow-hidden">
+    <div className="tv-legacy tv-panel w-full h-full relative bg-black flex flex-col items-center justify-center overflow-hidden">
       <img
         src={imageUrl}
         alt={title || 'Imagem'}

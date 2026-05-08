@@ -32,7 +32,7 @@ export function DisplaySplit({ config, instagramLinks }: DisplaySplitProps) {
   const youtubeEmbedUrl = config.youtube_link ? getYouTubeEmbedUrl(config.youtube_link) : null;
 
   return (
-    <div className="w-full h-full flex gap-2 bg-black p-2">
+    <div className="tv-legacy tv-panel w-full h-full flex gap-2 bg-black p-2">
       {/* YouTube - 70% */}
       <div className="flex-[7] bg-black rounded-lg overflow-hidden shadow-2xl relative pointer-events-none">
         {youtubeEmbedUrl ? (

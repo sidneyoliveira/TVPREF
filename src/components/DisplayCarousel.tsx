@@ -37,7 +37,7 @@ export function DisplayCarousel({ images }: DisplayCarouselProps) {
 
   if (images.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
+      <div className="tv-legacy tv-panel w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
         <p className="text-3xl text-gray-500">Nenhuma imagem no carrossel</p>
       </div>
     );
@@ -47,7 +47,7 @@ export function DisplayCarousel({ images }: DisplayCarouselProps) {
   const isVideo = currentImage.imagem_url.match(/\.(mp4|webm|ogg)$/i);
 
   return (
-    <div className="w-full h-full relative overflow-hidden bg-black">
+    <div className="tv-legacy tv-panel w-full h-full relative overflow-hidden bg-black">
       {/* Mídia atual */}
       {isVideo ? (
         <video
