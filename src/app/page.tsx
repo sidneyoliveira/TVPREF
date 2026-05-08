@@ -25,6 +25,8 @@ type TideInfo = {
 
 export default function TvScreen() {
   const { config, instagramLinks, carouselImages, loading } = useTvData();
+  // TESTE: Sempre mostrar bloco CSS inline para facilitar diagnóstico
+  const showCssTest = true;
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   const weatherLat = process.env.NEXT_PUBLIC_WEATHER_LAT;
@@ -120,6 +122,22 @@ export default function TvScreen() {
 
   return (
     <div className="flex flex-col h-screen w-full bg-linear-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-white font-sans overflow-hidden">
+      {/* TESTE CSS INLINE PARA TV */}
+      {showCssTest && (
+        <div style={{
+          background: '#222',
+          color: '#fff',
+          padding: 24,
+          borderRadius: 12,
+          margin: 24,
+          border: '3px solid #4ade80',
+          fontSize: 24,
+          textAlign: 'center',
+          zIndex: 9999
+        }}>
+          <b>TESTE CSS INLINE:</b> Se você está vendo este bloco estilizado, o CSS inline funciona na sua TV.
+        </div>
+      )}
       
       {/* HEADER */}
       <header className="relative flex items-center justify-between w-full h-30 z-10 shadow-lg bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
