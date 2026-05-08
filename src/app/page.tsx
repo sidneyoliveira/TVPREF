@@ -97,7 +97,7 @@ export default function TvScreen() {
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#0d1a2f] text-white">
-        <p className="text-3xl animate-pulse font-medium">Iniciando sistema...</p>
+        <p className="text-3xl animate-pulse font-medium">Oi, Iniciando sistema...</p>
       </div>
     );
   }
