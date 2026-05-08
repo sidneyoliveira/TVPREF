@@ -101,6 +101,7 @@ export default function TvScreen() {
       </div>
     );
   }
+  
 
   const renderDisplayMode = () => {
     let mainComponent;
