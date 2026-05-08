@@ -15,7 +15,12 @@ import logoBranca from '@/img/logo_branca.png';
 type CurrentWeather = {
   temperatureC: number | null;
   waveHeight: number | null;
-  time: string | null;
+};
+
+type TideInfo = {
+  tendencia: string;
+  tipo: string;
+  horario: string;
 };
 
 export default function TvScreen() {
@@ -28,9 +33,15 @@ export default function TvScreen() {
   const [weather, setWeather] = useState<CurrentWeather>({
     temperatureC: null,
     waveHeight: null,
-    time: null,
   });
 
+  const [tide, setTide] = useState<TideInfo>({
+    tendencia: '--',
+    tipo: '--',
+    horario: '--:--',
+  });
+
+  // Atualiza o relógio
   useEffect(() => {
     const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -40,63 +51,73 @@ export default function TvScreen() {
     return format(currentDateTime, 'dd/MM/yyyy');
   }, [currentDateTime]);
 
+  // Função para tendência e próxima maré (mock estruturado para API futura)
+  function getTideInfo(): TideInfo {
+    const now = new Date();
+    const isRising = now.getHours() % 2 === 0;
+
+    return {
+      tendencia: isRising ? 'SUBINDO' : 'DESCENDO',
+      tipo: isRising ? 'CHEIA' : 'BAIXA',
+      horario: isRising ? '12:30' : '18:10',
+    };
+  }
+
+  // Carrega Clima e Maré em paralelo
   useEffect(() => {
     let cancelled = false;
 
-    async function loadWeather() {
+    async function loadData() {
       if (!weatherLat || !weatherLon) return;
 
       try {
-        // Busca temperatura
-        const resWeather = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(
-            weatherLat,
-          )}&longitude=${encodeURIComponent(
-            weatherLon,
-          )}&current=temperature_2m&timezone=UTC`,
-          { cache: 'no-store' },
-        );
+        const [resWeather, resMarine] = await Promise.all([
+          fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(
+              weatherLat,
+            )}&longitude=${encodeURIComponent(
+              weatherLon,
+            )}&current=temperature_2m&timezone=UTC`,
+            { cache: 'no-store' },
+          ).catch(() => null),
+          fetch(
+            `https://marine-api.open-meteo.com/v1/marine?latitude=${encodeURIComponent(
+              weatherLat,
+            )}&longitude=${encodeURIComponent(
+              weatherLon,
+            )}&current=wave_height&timezone=UTC`,
+            { cache: 'no-store' },
+          ).catch(() => null),
+        ]);
+
+        if (cancelled) return;
 
         let tempC = null;
-        if (resWeather.ok) {
+        let waveH = null;
+
+        if (resWeather?.ok) {
           const jsonW = await resWeather.json();
           if (typeof jsonW.current?.temperature_2m === 'number') {
             tempC = jsonW.current.temperature_2m;
           }
         }
 
-        // Busca maré (onda)
-        const resMarine = await fetch(
-          `https://marine-api.open-meteo.com/v1/marine?latitude=${encodeURIComponent(
-            weatherLat,
-          )}&longitude=${encodeURIComponent(
-            weatherLon,
-          )}&current=wave_height&timezone=UTC`,
-          { cache: 'no-store' },
-        );
-
-        let waveH = null;
-        if (resMarine.ok) {
+        if (resMarine?.ok) {
           const jsonM = await resMarine.json();
           if (typeof jsonM.current?.wave_height === 'number') {
             waveH = jsonM.current.wave_height;
           }
         }
 
-        if (cancelled) return;
-
-        setWeather({
-          temperatureC: tempC,
-          waveHeight: waveH,
-          time: new Date().toISOString(),
-        });
+        setWeather({ temperatureC: tempC, waveHeight: waveH });
+        setTide(getTideInfo());
       } catch {
-        // mantemos default
+        // mantemos default em caso de erro extremo
       }
     }
 
-    loadWeather();
-    const t = setInterval(loadWeather, 10 * 60 * 1000); // 10 min
+    loadData();
+    const t = setInterval(loadData, 10 * 60 * 1000); // Atualiza a cada 10 min
     return () => {
       cancelled = true;
       clearInterval(t);
@@ -154,73 +175,88 @@ export default function TvScreen() {
     return mainComponent;
   };
 
-  const bgColor = config.aviso_bg_color || 'rgba(17, 17, 17, 0.9)'; // Fallback dark bg secondary
-  const textColor = config.aviso_text_color || '#ffffff';
-
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-black text-dark-text-primary font-sans">
-      <header className="flex items-center justify-between px-8 py-4 bg-gradient-to-r from-dark-bg-primary via-[#111] to-dark-bg-primary border-b border-dark-border z-10 shadow-md h-36">
-        {/* LOGO: maior e ocupando altura do cabeçario */}
-        <div className="h-full flex items-center shrink-0">
+    <div className="flex flex-col h-screen w-full bg-linear-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-dark-text-primary font-sans">
+      {/* HEADER PROFISSIONAL */}
+      <header className="relative flex items-center justify-between w-full h-30 z-10 shadow-lg bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
+        {/* LOGO com espaçamento proporcional */}
+        <div className="flex items-center h-full pl-[4vw]">
           <Image
             src={logoBranca}
-            alt="Logo"
+            alt="Logo Prefeitura"
             priority
-            className="object-contain h-full w-auto max-h-[110px]"
+            className="object-contain h-30 w-auto max-w-55 drop-shadow-xl"
           />
         </div>
-
-        {/* BLOCO DIREITO: RELÓGIO E DATA APENAS */}
-        <div className="flex items-center h-full py-1">
-          <div className="bg-dark-bg-secondary/80 px-10 py-4 rounded-2xl border border-dark-border/50 flex flex-col items-center justify-center min-w-[340px] h-full shadow-inner backdrop-blur-sm">
-            <div className="flex items-center gap-1">
-              <p className="text-7xl font-black tracking-tight text-white tabular-nums leading-none">
-                {format(currentDateTime, 'HH:mm:ss')}
-              </p>
-            </div>
-            <p className="text-2xl text-dark-text-secondary font-bold whitespace-nowrap text-center w-full tracking-widest mt-2">
-              {headerDate}
-            </p>
-          </div>
+        {/* Relógio e Data alinhados à direita */}
+        <div className="flex flex-col items-end justify-center h-full pr-[4vw] select-none">
+          <span
+            className="text-[4rem] font-bold text-white tracking-tight tabular-nums leading-none drop-shadow-2xl"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {format(currentDateTime, 'HH:mm:ss')}
+          </span>
+          <span className="text-xl font-bold text-blue-100 tracking-widest drop-shadow-md">
+            {headerDate}
+          </span>
         </div>
       </header>
 
-      <main className="flex-1 overflow-hidden bg-black">{renderDisplayMode()}</main>
+      {/* MAIN SEM SOBREPOSIÇÃO, SEMPRE OCUPANDO ÁREA ÚTIL */}
+      <main className="flex-1 w-full min-h-0 h-0 overflow-hidden relative flex">
+        <div className="flex-1 h-full w-full flex flex-col">
+          <div className="flex-1 h-full w-full flex flex-col justify-stretch items-stretch">
+            {renderDisplayMode()}
+          </div>
+        </div>
+      </main>
 
-      {/* FOOTER */}
-      {config.texto_aviso && (
-        <footer 
-          className="py-3 px-6 border-t border-dark-border shadow-lg z-10 flex items-center justify-between"
-          style={{ backgroundColor: bgColor }}
-        >
-          {/* AVISO PERSONALIZADO - Sem truncate */}
-          <div className="flex-1 mr-6">
-            <p 
-              className="text-2xl font-bold uppercase tracking-wide leading-tight break-words"
-              style={{ color: textColor }}
+      {/* FOOTER PROFISSIONAL */}
+      <footer className="w-full py-3 px-[4vw] bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] border-t border-[#1a2a44] flex items-center justify-between gap-8 shadow-lg z-10 min-h-17.5 max-h-22.5">
+        {/* AVISO PERSONALIZADO OU DEFAULT */}
+        <div className="flex-1 text-left">
+          {config.texto_aviso ? (
+            <span
+              className="text-4xl md:text-4xl font-bold uppercase tracking-normal leading-tight wrap-break-word drop-shadow-md"
+              style={{ color: config.aviso_text_color || '#fff' }}
             >
               {config.texto_aviso}
-            </p>
+            </span>
+          ) : (
+            <span className="text-base text-blue-200 opacity-80">
+              Prefeitura de Itarema
+            </span>
+          )}
+        </div>
+
+        {/* INFORMAÇÕES DO CLIMA E MARÉ */}
+        <div className="flex items-center justify-between gap-6 shrink-0 bg-[#102040]/80 px-6 py-3 rounded-2xl border border-[#1a2a44] min-w-[280px]">
+          {/* TEMPERATURA */}
+          <div className="flex flex-col items-center flex-1">
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-blue-300 mb-1">
+              Temperatura
+            </span>
+            <span className="text-2xl font-black tabular-nums text-white drop-shadow-md">
+              {weather.temperatureC === null
+                ? '--'
+                : `${Math.round(weather.temperatureC)}°C`}
+            </span>
           </div>
-          
-          {/* INFORMAÇÕES DO CLIMA E MARÉ */}
-          <div className="flex items-center gap-6 shrink-0 bg-black/30 px-6 py-2 rounded-xl border border-white/10">
-            <div className="flex items-center gap-2">
-              <span className="text-sm uppercase tracking-wider font-bold text-white/70">Temp:</span>
-              <span className="text-2xl font-black tabular-nums text-white">
-                {weather.temperatureC === null ? '--' : `${Math.round(weather.temperatureC)}°C`}
-              </span>
-            </div>
-            <div className="h-8 w-px bg-white/20"></div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm uppercase tracking-wider font-bold text-white/70">Maré:</span>
-              <span className="text-2xl font-black tabular-nums text-white">
-                {weather.waveHeight === null ? '--' : `${weather.waveHeight.toFixed(1)}m`}
-              </span>
-            </div>
+
+          {/* DIVISOR */}
+          <div className="h-10 w-px bg-blue-500/30"></div>
+
+          {/* MARÉ */}
+          <div className="flex flex-col items-center flex-1 min-w-[120px]">
+            <span className="text-sm uppercase tracking-wider font-bold text-white mb-0.5 drop-shadow-sm">
+              MARÉ {tide.tendencia}
+            </span>
+            <span className="text-xs font-medium text-blue-300/80 tracking-wide whitespace-nowrap">
+              MARÉ {tide.tipo} ÀS {tide.horario}
+            </span>
           </div>
-        </footer>
-      )}
+        </div>
+      </footer>
     </div>
   );
 }
