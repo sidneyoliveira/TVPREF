@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import { Maximize2, Minimize2 } from "lucide-react";
-import { DisplayAnnouncement } from "@/components/DisplayAnnouncement";
+import { DisplayAnnouncementQueue } from "@/components/DisplayAnnouncement";
 import { DisplayCarousel } from "@/components/DisplayCarousel";
 import { DisplayImage } from "@/components/DisplayImage";
 import { DisplaySplit } from "@/components/DisplaySplit";
@@ -13,7 +13,7 @@ import { DisplayYoutube } from "@/components/DisplayYoutube";
 import { useClock } from "@/hooks/useClock";
 import { useEnvironmentInfo } from "@/hooks/useEnvironmentInfo";
 import { useTvData } from "@/hooks/useTvData";
-import type { Configuracoes, InstagramLink, CarouselImage } from "@/lib/types";
+import type { Announcement, CarouselImage, Configuracoes, InstagramLink } from "@/lib/types";
 import logoBranca from "@/img/logo_branca.png";
 
 type FullscreenDocument = Document & {
@@ -29,9 +29,17 @@ type DisplayContentProps = {
   config: Configuracoes;
   instagramLinks: InstagramLink[];
   carouselImages: CarouselImage[];
+  announcements: Announcement[];
+  onAnnouncementBackgroundChange: (color: string) => void;
 };
 
-function DisplayContent({ config, instagramLinks, carouselImages }: DisplayContentProps) {
+function DisplayContent({
+  config,
+  instagramLinks,
+  carouselImages,
+  announcements,
+  onAnnouncementBackgroundChange,
+}: DisplayContentProps) {
   let content: ReactNode;
 
   switch (config.display_mode) {
@@ -46,9 +54,11 @@ function DisplayContent({ config, instagramLinks, carouselImages }: DisplayConte
       break;
     case "announcement":
       content = (
-        <DisplayAnnouncement
-          title={config.announcement_title || "Aviso Importante"}
-          text={config.announcement_text || "Nenhum aviso configurado."}
+        <DisplayAnnouncementQueue
+          announcements={announcements}
+          fallbackTitle={config.announcement_title || "Aviso Importante"}
+          fallbackText={config.announcement_text || "Nenhum aviso configurado."}
+          onBackgroundColorChange={onAnnouncementBackgroundChange}
         />
       );
       break;
@@ -112,10 +122,15 @@ function TvScreenSkeleton() {
 }
 
 export function TvScreenClient() {
-  const { config, instagramLinks, carouselImages, loading } = useTvData();
+  const { config, instagramLinks, carouselImages, announcements, loading } = useTvData();
   const clock = useClock();
   const { weather, tide } = useEnvironmentInfo();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [announcementBackgroundColor, setAnnouncementBackgroundColor] = useState("#123a70");
+
+  const handleAnnouncementBackgroundChange = useCallback((color: string) => {
+    setAnnouncementBackgroundColor(color);
+  }, []);
 
   useEffect(() => {
     const syncFullscreenState = () => {
@@ -163,12 +178,21 @@ export function TvScreenClient() {
     return <TvScreenSkeleton />;
   }
 
-  const footerStyle: CSSProperties = {
-    background: `linear-gradient(180deg, ${config.aviso_bg_color || "#07111f"}, rgba(5,15,28,0.98))`,
-  };
+  const displayBackgroundColor =
+    config.display_mode === "announcement"
+      ? announcementBackgroundColor
+      : config.theme_secondary_color || "#04142e";
+
+  const themeStyle = {
+    "--tv-theme-primary": config.theme_primary_color || "#08244f",
+    "--tv-theme-secondary": config.theme_secondary_color || "#04142e",
+    "--tv-theme-accent": config.theme_accent_color || "#2b7be4",
+    "--tv-display-bg": displayBackgroundColor,
+  } as CSSProperties &
+    Record<"--tv-theme-primary" | "--tv-theme-secondary" | "--tv-theme-accent" | "--tv-display-bg", string>;
 
   return (
-    <div id="tv-root">
+    <div id="tv-root" style={themeStyle}>
       <header className="tv-header">
         <div className="tv-header-left">
           <Image src={logoBranca} alt="Logo Prefeitura" priority className="tv-logo" />
@@ -190,18 +214,19 @@ export function TvScreenClient() {
 
       <main className="tv-main">
         <div className="tv-display">
-          <DisplayContent config={config} instagramLinks={instagramLinks} carouselImages={carouselImages} />
+          <DisplayContent
+            config={config}
+            instagramLinks={instagramLinks}
+            carouselImages={carouselImages}
+            announcements={announcements}
+            onAnnouncementBackgroundChange={handleAnnouncementBackgroundChange}
+          />
         </div>
       </main>
 
-      <footer className="tv-footer" style={footerStyle}>
+      <footer className="tv-footer">
         <div className="tv-footer-left">
-          <span
-            className="tv-footer-message"
-            style={{
-              color: config.aviso_text_color || "#ffffff",
-            }}
-          >
+          <span className="tv-footer-message">
             {config.texto_aviso || "Bem-vindo à Prefeitura de Itarema!"}
           </span>
         </div>

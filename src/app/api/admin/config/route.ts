@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import {
+  isMissingColumnError,
+  readSettingsJson,
+  SETTINGS_PATHS,
+  writeSettingsJson,
+} from "@/lib/settings-storage";
 import { defaultConfig, DISPLAY_MODES, type Configuracoes } from "@/lib/types";
 
 type ConfigRequestBody = Partial<Configuracoes>;
@@ -12,24 +18,33 @@ function optionalText(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
-function serializeError(error: unknown) {
-  if (error instanceof Error) return error.message;
-
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
+function optionalColor(value: unknown, fallback: string) {
+  if (typeof value !== "string") return fallback;
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
 }
 
-function isMissingOptionalColumn(error: unknown) {
-  const text = serializeError(error);
+function needsStorageColorFallback(data: Record<string, unknown> | null) {
+  if (!data) return true;
+
   return (
-    text.includes("show_instagram") ||
-    text.includes("aviso_bg_color") ||
-    text.includes("aviso_text_color") ||
-    (typeof error === "object" && error !== null && "code" in error && error.code === "PGRST204")
+    !("show_instagram" in data) ||
+    !("aviso_bg_color" in data) ||
+    !("aviso_text_color" in data) ||
+    !("theme_primary_color" in data) ||
+    !("theme_secondary_color" in data) ||
+    !("theme_accent_color" in data)
   );
+}
+
+function getOptionalOverrides(body: ConfigRequestBody): Partial<Configuracoes> {
+  return {
+    show_instagram: Boolean(body.show_instagram),
+    aviso_bg_color: optionalColor(body.aviso_bg_color, defaultConfig.aviso_bg_color || "#123a70"),
+    aviso_text_color: optionalColor(body.aviso_text_color, defaultConfig.aviso_text_color || "#ffffff"),
+    theme_primary_color: optionalColor(body.theme_primary_color, defaultConfig.theme_primary_color || "#08244f"),
+    theme_secondary_color: optionalColor(body.theme_secondary_color, defaultConfig.theme_secondary_color || "#04142e"),
+    theme_accent_color: optionalColor(body.theme_accent_color, defaultConfig.theme_accent_color || "#2b7be4"),
+  };
 }
 
 export async function GET() {
@@ -45,7 +60,15 @@ export async function GET() {
       throw error;
     }
 
-    return NextResponse.json({ ...defaultConfig, ...data });
+    const storageOverrides = needsStorageColorFallback(data)
+      ? await readSettingsJson<Partial<Configuracoes>>(
+          supabaseAdmin,
+          SETTINGS_PATHS.configOverrides,
+          {},
+        )
+      : {};
+
+    return NextResponse.json({ ...defaultConfig, ...data, ...storageOverrides });
   } catch (error) {
     console.error("Admin config fetch error:", error);
     return NextResponse.json({ error: "Erro ao buscar configurações" }, { status: 500 });
@@ -67,12 +90,12 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
+    const optionalOverrides = getOptionalOverrides(body);
+
     try {
       const fullUpdate = {
         ...baseUpdate,
-        show_instagram: Boolean(body.show_instagram),
-        aviso_bg_color: optionalText(body.aviso_bg_color) || defaultConfig.aviso_bg_color,
-        aviso_text_color: optionalText(body.aviso_text_color) || defaultConfig.aviso_text_color,
+        ...optionalOverrides,
       };
 
       const { data, error } = await supabaseAdmin
@@ -82,17 +105,40 @@ export async function POST(request: Request) {
         .select("*");
 
       if (error) throw error;
-      return NextResponse.json(data[0]);
+      return NextResponse.json({ ...defaultConfig, ...data[0] });
     } catch (error) {
-      if (isMissingOptionalColumn(error)) {
-        const { data, error: errorWithout } = await supabaseAdmin
+      if (isMissingColumnError(error)) {
+        const updateWithInstagram = {
+          ...baseUpdate,
+          show_instagram: Boolean(body.show_instagram),
+        };
+
+        let { data, error: errorWithout } = await supabaseAdmin
           .from("configuracoes")
-          .update(baseUpdate)
+          .update(updateWithInstagram)
           .eq("id", 1)
           .select("*");
 
+        if (errorWithout && isMissingColumnError(errorWithout)) {
+          const retry = await supabaseAdmin
+            .from("configuracoes")
+            .update(baseUpdate)
+            .eq("id", 1)
+            .select("*");
+
+          data = retry.data;
+          errorWithout = retry.error;
+        }
+
         if (errorWithout) throw errorWithout;
-        return NextResponse.json(data[0]);
+
+        await writeSettingsJson(
+          supabaseAdmin,
+          SETTINGS_PATHS.configOverrides,
+          optionalOverrides,
+        );
+
+        return NextResponse.json({ ...defaultConfig, ...(data?.[0] ?? {}), ...optionalOverrides });
       }
 
       throw error;

@@ -19,6 +19,9 @@ export interface Configuracoes {
   show_instagram?: boolean | null;
   aviso_bg_color?: string | null;
   aviso_text_color?: string | null;
+  theme_primary_color?: string | null;
+  theme_secondary_color?: string | null;
+  theme_accent_color?: string | null;
   updated_at?: string | null;
 }
 
@@ -34,6 +37,18 @@ export interface CarouselImage {
   titulo?: string | null;
   descricao?: string | null;
   ordem: number;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  text: string;
+  bg_color: string;
+  text_color: string;
+  ordem: number;
+  is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface TideInfo {
@@ -56,4 +71,7 @@ export const defaultConfig: Configuracoes = {
   show_instagram: false,
   aviso_bg_color: "#123a70",
   aviso_text_color: "#ffffff",
+  theme_primary_color: "#08244f",
+  theme_secondary_color: "#04142e",
+  theme_accent_color: "#2b7be4",
 };

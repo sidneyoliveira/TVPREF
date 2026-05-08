@@ -6,22 +6,25 @@ import {
   defaultConfig,
   DISPLAY_MODES,
   type CarouselImage,
+  type Announcement,
   type Configuracoes,
   type InstagramLink,
 } from "@/lib/types";
 
-export type { CarouselImage, Configuracoes, InstagramLink };
+export type { Announcement, CarouselImage, Configuracoes, InstagramLink };
 
 type TvDataState = {
   config: Configuracoes;
   instagramLinks: InstagramLink[];
   carouselImages: CarouselImage[];
+  announcements: Announcement[];
 };
 
 const initialState: TvDataState = {
   config: defaultConfig,
   instagramLinks: [],
   carouselImages: [],
+  announcements: [],
 };
 
 function isDisplayMode(value: unknown): value is Configuracoes["display_mode"] {
@@ -40,22 +43,29 @@ function normalizeConfig(value: Partial<Configuracoes> | null): Configuracoes {
     show_instagram: Boolean(value?.show_instagram),
     aviso_bg_color: value?.aviso_bg_color || defaultConfig.aviso_bg_color,
     aviso_text_color: value?.aviso_text_color || defaultConfig.aviso_text_color,
+    theme_primary_color: value?.theme_primary_color || defaultConfig.theme_primary_color,
+    theme_secondary_color: value?.theme_secondary_color || defaultConfig.theme_secondary_color,
+    theme_accent_color: value?.theme_accent_color || defaultConfig.theme_accent_color,
   };
 }
 
 async function fetchConfig() {
-  const { data, error } = await supabase
-    .from("configuracoes")
-    .select("*")
-    .eq("id", 1)
-    .single();
+  try {
+    const response = await fetch("/api/admin/config", { cache: "no-store" });
 
-  if (error) {
-    console.error("Erro ao buscar configurações:", error);
-    return defaultConfig;
+    if (response.ok) {
+      return normalizeConfig((await response.json()) as Partial<Configuracoes>);
+    }
+  } catch (error) {
+    console.error("Erro ao buscar configurações pela API:", error);
   }
 
-  return normalizeConfig(data);
+  const { data, error } = await supabase.from("configuracoes").select("*").eq("id", 1).single();
+
+  if (!error) return normalizeConfig(data);
+
+  console.error("Erro ao buscar configurações:", error);
+  return defaultConfig;
 }
 
 async function fetchInstagramLinks() {
@@ -86,18 +96,36 @@ async function fetchCarouselImages() {
   return data ?? [];
 }
 
+async function fetchAnnouncements() {
+  try {
+    const response = await fetch("/api/admin/announcements", { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error("Falha ao buscar avisos");
+    }
+
+    const data = (await response.json()) as Announcement[];
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Erro ao buscar avisos:", error);
+  }
+
+  return [];
+}
+
 export function useTvData() {
   const [state, setState] = useState<TvDataState>(initialState);
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    const [config, instagramLinks, carouselImages] = await Promise.all([
+    const [config, instagramLinks, carouselImages, announcements] = await Promise.all([
       fetchConfig(),
       fetchInstagramLinks(),
       fetchCarouselImages(),
+      fetchAnnouncements(),
     ]);
 
-    setState({ config, instagramLinks, carouselImages });
+    setState({ config, instagramLinks, carouselImages, announcements });
     setLoading(false);
   }, []);
 
@@ -105,15 +133,16 @@ export function useTvData() {
     let active = true;
 
     async function loadInitialData() {
-      const [config, instagramLinks, carouselImages] = await Promise.all([
+      const [config, instagramLinks, carouselImages, announcements] = await Promise.all([
         fetchConfig(),
         fetchInstagramLinks(),
         fetchCarouselImages(),
+        fetchAnnouncements(),
       ]);
 
       if (!active) return;
 
-      setState({ config, instagramLinks, carouselImages });
+      setState({ config, instagramLinks, carouselImages, announcements });
       setLoading(false);
     }
 
@@ -124,13 +153,9 @@ export function useTvData() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "configuracoes" },
-        (payload) => {
-          if (payload.new) {
-            setState((current) => ({
-              ...current,
-              config: normalizeConfig(payload.new as Partial<Configuracoes>),
-            }));
-          }
+        async () => {
+          const [config, announcements] = await Promise.all([fetchConfig(), fetchAnnouncements()]);
+          setState((current) => ({ ...current, config, announcements }));
         },
       )
       .on(
@@ -147,6 +172,14 @@ export function useTvData() {
         async () => {
           const carouselImages = await fetchCarouselImages();
           setState((current) => ({ ...current, carouselImages }));
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "announcements" },
+        async () => {
+          const announcements = await fetchAnnouncements();
+          setState((current) => ({ ...current, announcements }));
         },
       )
       .subscribe();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import {
   GalleryHorizontal,
@@ -10,6 +10,7 @@ import {
   LogOut,
   Megaphone,
   MonitorPlay,
+  Pencil,
   Plus,
   Save,
   Search,
@@ -17,11 +18,12 @@ import {
   Trash2,
   Tv,
   UploadCloud,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTvData } from "@/hooks/useTvData";
 import { supabase } from "@/lib/supabase";
-import { DISPLAY_MODES, type Configuracoes, type DisplayMode } from "@/lib/types";
+import { DISPLAY_MODES, type Announcement, type Configuracoes, type DisplayMode } from "@/lib/types";
 import logoBranca from "@/img/logo_branca.png";
 
 type ConfigFormState = {
@@ -34,12 +36,27 @@ type ConfigFormState = {
   announcement_title: string;
   announcement_text: string;
   show_instagram: boolean;
+  theme_primary_color: string;
+  theme_secondary_color: string;
+  theme_accent_color: string;
+};
+
+type AnnouncementFormState = {
+  title: string;
+  text: string;
+  bg_color: string;
+  text_color: string;
+  ordem: number;
+  is_active: boolean;
 };
 
 type PersistOptions = {
   successMessage?: string;
   silent?: boolean;
 };
+
+const ADMIN_AUTH_KEY = "adminAuthenticated";
+const ADMIN_AUTH_EVENT = "tvpref-admin-auth-changed";
 
 const DEFAULT_FORM: ConfigFormState = {
   youtube_link: "",
@@ -51,6 +68,18 @@ const DEFAULT_FORM: ConfigFormState = {
   announcement_title: "",
   announcement_text: "",
   show_instagram: false,
+  theme_primary_color: "#08244f",
+  theme_secondary_color: "#04142e",
+  theme_accent_color: "#2b7be4",
+};
+
+const DEFAULT_ANNOUNCEMENT_FORM: AnnouncementFormState = {
+  title: "",
+  text: "",
+  bg_color: "#123a70",
+  text_color: "#ffffff",
+  ordem: 0,
+  is_active: true,
 };
 
 const MODE_OPTIONS: Array<{
@@ -76,6 +105,9 @@ function toFormState(config: Configuracoes): ConfigFormState {
     announcement_title: config.announcement_title || "",
     announcement_text: config.announcement_text || "",
     show_instagram: Boolean(config.show_instagram),
+    theme_primary_color: config.theme_primary_color || DEFAULT_FORM.theme_primary_color,
+    theme_secondary_color: config.theme_secondary_color || DEFAULT_FORM.theme_secondary_color,
+    theme_accent_color: config.theme_accent_color || DEFAULT_FORM.theme_accent_color,
   };
 }
 
@@ -98,6 +130,28 @@ function createMediaFileName(fileExtension: string) {
   return `${id}.${fileExtension}`;
 }
 
+function subscribeAdminAuth(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(ADMIN_AUTH_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(ADMIN_AUTH_EVENT, onStoreChange);
+  };
+}
+
+function getAdminAuthSnapshot() {
+  return localStorage.getItem(ADMIN_AUTH_KEY) === "true";
+}
+
+function getServerAuthSnapshot() {
+  return false;
+}
+
+function notifyAdminAuthChange() {
+  window.dispatchEvent(new Event(ADMIN_AUTH_EVENT));
+}
+
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="admin-field-label">{children}</label>;
 }
@@ -115,8 +169,10 @@ function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Tv
 }
 
 export function AdminDashboardClient() {
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    () => typeof window !== "undefined" && localStorage.getItem("adminAuthenticated") === "true",
+  const isAuthenticated = useSyncExternalStore(
+    subscribeAdminAuth,
+    getAdminAuthSnapshot,
+    getServerAuthSnapshot,
   );
   const [password, setPassword] = useState("");
   const [form, setForm] = useState<ConfigFormState>(DEFAULT_FORM);
@@ -126,11 +182,14 @@ export function AdminDashboardClient() {
   const [newInstagramUrl, setNewInstagramUrl] = useState("");
   const [instagramFilter, setInstagramFilter] = useState("");
   const [mediaFilter, setMediaFilter] = useState("");
+  const [announcementForm, setAnnouncementForm] = useState<AnnouncementFormState>(DEFAULT_ANNOUNCEMENT_FORM);
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
+  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const carouselInputRef = useRef<HTMLInputElement>(null);
 
-  const { config, instagramLinks, carouselImages, loading, refetch } = useTvData();
+  const { config, instagramLinks, carouselImages, announcements, loading, refetch } = useTvData();
 
   useEffect(() => {
     if (!loading && !hasInitialized) {
@@ -158,11 +217,17 @@ export function AdminDashboardClient() {
   }, [carouselImages, mediaFilter]);
 
   const currentMode = MODE_OPTIONS.find((mode) => mode.id === form.display_mode) ?? MODE_OPTIONS[0];
+  const activeAnnouncementsCount = announcements.filter((announcement) => announcement.is_active).length;
 
   async function persistConfig(overrides: Partial<ConfigFormState> = {}, options: PersistOptions = {}) {
     const payload = {
       ...form,
       ...overrides,
+    };
+    const payloadWithThemeLetreiro = {
+      ...payload,
+      aviso_bg_color: payload.theme_primary_color,
+      aviso_text_color: "#ffffff",
     };
 
     setIsSaving(true);
@@ -171,14 +236,14 @@ export function AdminDashboardClient() {
       const response = await fetch("/api/admin/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadWithThemeLetreiro),
       });
 
       if (!response.ok) {
         throw new Error("Falha ao salvar configurações");
       }
 
-      setForm(payload);
+      setForm(payloadWithThemeLetreiro);
       await refetch();
 
       if (!options.silent) {
@@ -207,8 +272,8 @@ export function AdminDashboardClient() {
         return;
       }
 
-      localStorage.setItem("adminAuthenticated", "true");
-      setIsAuthenticated(true);
+      localStorage.setItem(ADMIN_AUTH_KEY, "true");
+      notifyAdminAuthChange();
       toast.success("Login realizado.");
     } catch {
       toast.error("Erro ao tentar fazer login.");
@@ -216,8 +281,8 @@ export function AdminDashboardClient() {
   }
 
   function handleLogout() {
-    localStorage.removeItem("adminAuthenticated");
-    setIsAuthenticated(false);
+    localStorage.removeItem(ADMIN_AUTH_KEY);
+    notifyAdminAuthChange();
     setPassword("");
   }
 
@@ -369,6 +434,97 @@ export function AdminDashboardClient() {
     }
   }
 
+  function resetAnnouncementForm() {
+    setAnnouncementForm(DEFAULT_ANNOUNCEMENT_FORM);
+    setEditingAnnouncementId(null);
+  }
+
+  function editAnnouncement(announcement: Announcement) {
+    setEditingAnnouncementId(announcement.id);
+    setAnnouncementForm({
+      title: announcement.title,
+      text: announcement.text,
+      bg_color: announcement.bg_color,
+      text_color: announcement.text_color,
+      ordem: announcement.ordem,
+      is_active: announcement.is_active,
+    });
+  }
+
+  async function saveAnnouncement() {
+    const title = announcementForm.title.trim();
+    const text = announcementForm.text.trim();
+
+    if (!title || !text) {
+      toast.error("Preencha título e texto do aviso.");
+      return;
+    }
+
+    setIsSavingAnnouncement(true);
+
+    try {
+      const response = await fetch("/api/admin/announcements", {
+        method: editingAnnouncementId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...announcementForm,
+          id: editingAnnouncementId,
+          title,
+          text,
+          ordem: announcementForm.ordem || announcements.length + 1,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Falha ao salvar aviso");
+
+      resetAnnouncementForm();
+      await refetch();
+      toast.success(editingAnnouncementId ? "Aviso atualizado." : "Aviso criado.");
+    } catch {
+      toast.error("Erro ao salvar aviso.");
+    } finally {
+      setIsSavingAnnouncement(false);
+    }
+  }
+
+  async function removeAnnouncement(id: string) {
+    if (!window.confirm("Remover este aviso?")) return;
+
+    try {
+      const response = await fetch(`/api/admin/announcements?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Falha ao remover aviso");
+
+      if (editingAnnouncementId === id) {
+        resetAnnouncementForm();
+      }
+
+      await refetch();
+      toast.success("Aviso removido.");
+    } catch {
+      toast.error("Erro ao remover aviso.");
+    }
+  }
+
+  async function toggleAnnouncement(announcement: Announcement) {
+    try {
+      const response = await fetch("/api/admin/announcements", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...announcement,
+          is_active: !announcement.is_active,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Falha ao alterar aviso");
+
+      await refetch();
+      toast.success(!announcement.is_active ? "Aviso ativado." : "Aviso pausado.");
+    } catch {
+      toast.error("Erro ao alterar aviso.");
+    }
+  }
+
   if (!isAuthenticated) {
     return (
       <main className="admin-login-shell">
@@ -404,7 +560,11 @@ export function AdminDashboardClient() {
             </div>
             <div className="admin-brand-text">
               <h1>Controle da TV</h1>
-              <p>{loading ? "Sincronizando" : `${carouselImages.length} mídias | ${instagramLinks.length} posts`}</p>
+              <p>
+                {loading
+                  ? "Sincronizando"
+                  : `${carouselImages.length} mídias | ${instagramLinks.length} posts | ${activeAnnouncementsCount} avisos`}
+              </p>
             </div>
           </div>
 
@@ -492,22 +652,57 @@ export function AdminDashboardClient() {
                 placeholder="Mensagem exibida no rodapé"
               />
             </div>
+          </Panel>
+
+          <Panel title="Tema da TV" icon={MonitorPlay}>
+            <div
+              className="admin-theme-preview"
+              style={{ backgroundColor: form.theme_primary_color, borderColor: form.theme_accent_color }}
+            >
+              <span style={{ backgroundColor: form.theme_secondary_color }} />
+              <span style={{ backgroundColor: form.theme_accent_color }} />
+            </div>
+            <div className="admin-theme-presets">
+              <button
+                type="button"
+                className="admin-button admin-button-outline"
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    theme_primary_color: "#08244f",
+                    theme_secondary_color: "#04142e",
+                    theme_accent_color: "#2b7be4",
+                  }))
+                }
+              >
+                Azul padrão
+              </button>
+            </div>
             <div className="admin-color-grid">
               <label className="admin-field-stack">
-                <FieldLabel>Fundo</FieldLabel>
+                <FieldLabel>Cor principal</FieldLabel>
                 <input
                   type="color"
-                  value={form.aviso_bg_color}
-                  onChange={(event) => setForm((current) => ({ ...current, aviso_bg_color: event.target.value }))}
+                  value={form.theme_primary_color}
+                  onChange={(event) => setForm((current) => ({ ...current, theme_primary_color: event.target.value }))}
                   className="admin-color-input"
                 />
               </label>
               <label className="admin-field-stack">
-                <FieldLabel>Texto</FieldLabel>
+                <FieldLabel>Cor base</FieldLabel>
                 <input
                   type="color"
-                  value={form.aviso_text_color}
-                  onChange={(event) => setForm((current) => ({ ...current, aviso_text_color: event.target.value }))}
+                  value={form.theme_secondary_color}
+                  onChange={(event) => setForm((current) => ({ ...current, theme_secondary_color: event.target.value }))}
+                  className="admin-color-input"
+                />
+              </label>
+              <label className="admin-field-stack admin-field-wide">
+                <FieldLabel>Destaque</FieldLabel>
+                <input
+                  type="color"
+                  value={form.theme_accent_color}
+                  onChange={(event) => setForm((current) => ({ ...current, theme_accent_color: event.target.value }))}
                   className="admin-color-input"
                 />
               </label>
@@ -516,7 +711,7 @@ export function AdminDashboardClient() {
         </div>
 
         <div className="admin-column admin-column-wide">
-          <Panel title="Conteúdo Principal" icon={LayoutTemplate}>
+          <Panel title="Imagem Fixa / Fallback" icon={LayoutTemplate}>
             <div className="admin-content-form">
               <div className="admin-field-stack">
                 <FieldLabel>Título</FieldLabel>
@@ -564,6 +759,159 @@ export function AdminDashboardClient() {
                 <img src={form.image_url} alt="Preview da imagem fixa" className="admin-preview-image" />
               </div>
             )}
+          </Panel>
+
+          <Panel title="Avisos de Tela" icon={Megaphone}>
+            <div className="admin-announcement-editor">
+              <div className="admin-content-form admin-announcement-form">
+                <div className="admin-field-stack">
+                  <FieldLabel>Título</FieldLabel>
+                  <input
+                    type="text"
+                    value={announcementForm.title}
+                    onChange={(event) =>
+                      setAnnouncementForm((current) => ({ ...current, title: event.target.value }))
+                    }
+                    className="admin-control"
+                    placeholder="Ex: Aviso importante"
+                  />
+                </div>
+                <div className="admin-field-stack">
+                  <FieldLabel>Ordem</FieldLabel>
+                  <input
+                    type="number"
+                    min={0}
+                    value={announcementForm.ordem}
+                    onChange={(event) =>
+                      setAnnouncementForm((current) => ({ ...current, ordem: Number(event.target.value) }))
+                    }
+                    className="admin-control"
+                  />
+                </div>
+                <div className="admin-field-stack admin-content-text admin-announcement-text-field">
+                  <FieldLabel>Texto</FieldLabel>
+                  <textarea
+                    value={announcementForm.text}
+                    onChange={(event) =>
+                      setAnnouncementForm((current) => ({ ...current, text: event.target.value }))
+                    }
+                    className="admin-control admin-textarea admin-textarea-large"
+                    placeholder="Mensagem exibida em tela cheia"
+                  />
+                </div>
+                <div className="admin-color-grid admin-announcement-color-grid">
+                  <label className="admin-field-stack">
+                    <FieldLabel>Fundo</FieldLabel>
+                    <input
+                      type="color"
+                      value={announcementForm.bg_color}
+                      onChange={(event) =>
+                        setAnnouncementForm((current) => ({ ...current, bg_color: event.target.value }))
+                      }
+                      className="admin-color-input"
+                    />
+                  </label>
+                  <label className="admin-field-stack">
+                    <FieldLabel>Fonte</FieldLabel>
+                    <input
+                      type="color"
+                      value={announcementForm.text_color}
+                      onChange={(event) =>
+                        setAnnouncementForm((current) => ({ ...current, text_color: event.target.value }))
+                      }
+                      className="admin-color-input"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="admin-announcement-actions">
+                <label className="admin-check-row">
+                  <input
+                    type="checkbox"
+                    checked={announcementForm.is_active}
+                    onChange={(event) =>
+                      setAnnouncementForm((current) => ({ ...current, is_active: event.target.checked }))
+                    }
+                  />
+                  Ativo
+                </label>
+                {editingAnnouncementId && (
+                  <button type="button" onClick={resetAnnouncementForm} className="admin-button admin-button-ghost">
+                    <X size={16} />
+                    <span>Cancelar</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={saveAnnouncement}
+                  disabled={isSavingAnnouncement}
+                  className="admin-button admin-button-primary"
+                >
+                  <Save size={16} />
+                  <span>{editingAnnouncementId ? "Atualizar" : "Criar aviso"}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="admin-table-wrap">
+              <table className="admin-table admin-announcement-table">
+                <thead>
+                  <tr>
+                    <th className="admin-col-order">#</th>
+                    <th>Aviso</th>
+                    <th className="admin-col-status">Status</th>
+                    <th className="admin-col-action">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {announcements.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="admin-empty-cell">
+                        Nenhum aviso criado.
+                      </td>
+                    </tr>
+                  ) : (
+                    announcements.map((announcement) => (
+                      <tr key={announcement.id}>
+                        <td className="admin-muted">{announcement.ordem}</td>
+                        <td>
+                          <div className="admin-table-primary">{announcement.title}</div>
+                          <div className="admin-table-secondary">{announcement.text}</div>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => toggleAnnouncement(announcement)}
+                            className={`admin-status-pill ${announcement.is_active ? "is-active" : ""}`}
+                          >
+                            {announcement.is_active ? "Ativo" : "Pausado"}
+                          </button>
+                        </td>
+                        <td className="admin-cell-action">
+                          <button
+                            type="button"
+                            onClick={() => editAnnouncement(announcement)}
+                            className="admin-icon-button"
+                            aria-label="Editar aviso"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeAnnouncement(announcement.id)}
+                            className="admin-icon-button"
+                            aria-label="Remover aviso"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </Panel>
 
           <Panel title="Galeria do Carrossel" icon={GalleryHorizontal}>
