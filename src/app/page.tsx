@@ -96,7 +96,7 @@ export default function TvScreen() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-dark-bg-primary text-dark-text-primary">
+      <div className="flex h-screen w-full items-center justify-center bg-[#0d1a2f] text-white">
         <p className="text-3xl animate-pulse font-medium">Iniciando sistema...</p>
       </div>
     );
@@ -146,20 +146,20 @@ export default function TvScreen() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-linear-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-dark-text-primary font-sans overflow-hidden">
+    <div className="flex flex-col h-screen w-full bg-gradient-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-white font-sans overflow-hidden">
       {/* HEADER */}
-      <header className="relative flex items-center justify-between w-full h-30 z-10 shadow-lg bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
+      <header className="relative flex items-center justify-between w-full h-[120px] z-10 shadow-lg bg-gradient-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
         <div className="flex items-center h-full pl-[4vw]">
           <Image
             src={logoBranca}
             alt="Logo Prefeitura"
             priority
-            className="object-contain h-30 w-auto max-w-55 drop-shadow-xl"
+            className="object-contain h-[80px] w-auto max-w-[250px] drop-shadow-xl"
           />
         </div>
         <div className="flex flex-col items-end justify-center h-full pr-[4vw] select-none">
           <span
-            className="text-[4rem] font-bold text-white tracking-tight tabular-nums leading-none drop-shadow-2xl"
+            className="text-[4rem] font-bold text-white tracking-tight leading-none drop-shadow-2xl"
             style={{ fontVariantNumeric: 'tabular-nums' }}
           >
             {format(currentDateTime, 'HH:mm:ss')}
@@ -171,7 +171,7 @@ export default function TvScreen() {
       </header>
 
       {/* MAIN */}
-      <main className="flex-1 w-full min-h-0 h-0 overflow-hidden relative flex">
+      <main className="flex-1 w-full min-h-0 overflow-hidden relative flex">
         <div className="flex-1 h-full w-full flex flex-col">
           <div className="flex-1 h-full w-full flex flex-col justify-stretch items-stretch">
             {renderDisplayMode()}
@@ -180,7 +180,7 @@ export default function TvScreen() {
       </main>
 
       {/* FOOTER BLINDADO CONTRA QUEBRAS */}
-      <footer className="w-full py-4 px-[4vw] bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] border-t border-[#1a2a44] flex items-center justify-between gap-6 shadow-lg z-10 min-h-[100px]">
+      <footer className="w-full py-4 px-[4vw] bg-gradient-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] border-t border-[#1a2a44] flex items-center justify-between gap-6 shadow-lg z-10 min-h-[100px]">
         
         {/* TEXTO DA PREFEITURA / AVISO */}
         <div className="flex-1 text-left overflow-hidden pr-4">
