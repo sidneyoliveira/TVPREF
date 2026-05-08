@@ -1,3 +1,4 @@
+// src/app/page.tsx
 'use client';
 
 import { useTvData } from '@/hooks/useTvData';
@@ -41,7 +42,7 @@ export default function TvScreen() {
     horario: '--:--',
   });
 
-  // Atualiza o relógio
+  // Atualiza o relógio a cada segundo
   useEffect(() => {
     const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -51,73 +52,50 @@ export default function TvScreen() {
     return format(currentDateTime, 'dd/MM/yyyy');
   }, [currentDateTime]);
 
-  // Função para tendência e próxima maré (mock estruturado para API futura)
-  function getTideInfo(): TideInfo {
-    const now = new Date();
-    const isRising = now.getHours() % 2 === 0;
-
-    return {
-      tendencia: isRising ? 'SUBINDO' : 'DESCENDO',
-      tipo: isRising ? 'CHEIA' : 'BAIXA',
-      horario: isRising ? '12:30' : '18:10',
-    };
-  }
-
-  // Carrega Clima e Maré em paralelo
+  // Carrega Clima (Externo) e Maré (Do nosso próprio banco/API)
   useEffect(() => {
     let cancelled = false;
 
     async function loadData() {
-      if (!weatherLat || !weatherLon) return;
-
       try {
-        const [resWeather, resMarine] = await Promise.all([
-          fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(
-              weatherLat,
-            )}&longitude=${encodeURIComponent(
-              weatherLon,
-            )}&current=temperature_2m&timezone=UTC`,
-            { cache: 'no-store' },
-          ).catch(() => null),
-          fetch(
-            `https://marine-api.open-meteo.com/v1/marine?latitude=${encodeURIComponent(
-              weatherLat,
-            )}&longitude=${encodeURIComponent(
-              weatherLon,
-            )}&current=wave_height&timezone=UTC`,
-            { cache: 'no-store' },
-          ).catch(() => null),
+        const [resWeather, resTide] = await Promise.all([
+          // Busca clima grátis (Open-Meteo)
+          weatherLat && weatherLon ? fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(weatherLat)}&longitude=${encodeURIComponent(weatherLon)}&current=temperature_2m&timezone=UTC`,
+            { cache: 'no-store' }
+          ).catch(() => null) : null,
+          
+          // Busca maré limpa (Nossa API do banco de dados)
+          fetch('/api/tide', { cache: 'no-store' }).catch(() => null)
         ]);
 
         if (cancelled) return;
 
-        let tempC = null;
-        let waveH = null;
-
+        // Trata Temperatura
         if (resWeather?.ok) {
           const jsonW = await resWeather.json();
           if (typeof jsonW.current?.temperature_2m === 'number') {
-            tempC = jsonW.current.temperature_2m;
+            setWeather(prev => ({ ...prev, temperatureC: jsonW.current.temperature_2m }));
           }
         }
 
-        if (resMarine?.ok) {
-          const jsonM = await resMarine.json();
-          if (typeof jsonM.current?.wave_height === 'number') {
-            waveH = jsonM.current.wave_height;
+        // Trata Maré do Banco
+        if (resTide?.ok) {
+          const tideData = await resTide.json();
+          if (tideData.horario) {
+            setTide(tideData);
           }
         }
-
-        setWeather({ temperatureC: tempC, waveHeight: waveH });
-        setTide(getTideInfo());
-      } catch {
-        // mantemos default em caso de erro extremo
+      } catch (err) {
+        console.error("Erro ao carregar dados:", err);
       }
     }
 
     loadData();
-    const t = setInterval(loadData, 10 * 60 * 1000); // Atualiza a cada 10 min
+    // Atualiza a tela a cada 10 min. 
+    // Nossa rota de API só vai chamar a Stormglass a cada 12h, protegendo nossa cota!
+    const t = setInterval(loadData, 10 * 60 * 1000); 
+    
     return () => {
       cancelled = true;
       clearInterval(t);
@@ -179,7 +157,6 @@ export default function TvScreen() {
     <div className="flex flex-col h-screen w-full bg-linear-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-dark-text-primary font-sans">
       {/* HEADER PROFISSIONAL */}
       <header className="relative flex items-center justify-between w-full h-30 z-10 shadow-lg bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
-        {/* LOGO com espaçamento proporcional */}
         <div className="flex items-center h-full pl-[4vw]">
           <Image
             src={logoBranca}
@@ -188,7 +165,6 @@ export default function TvScreen() {
             className="object-contain h-30 w-auto max-w-55 drop-shadow-xl"
           />
         </div>
-        {/* Relógio e Data alinhados à direita */}
         <div className="flex flex-col items-end justify-center h-full pr-[4vw] select-none">
           <span
             className="text-[4rem] font-bold text-white tracking-tight tabular-nums leading-none drop-shadow-2xl"
@@ -202,7 +178,7 @@ export default function TvScreen() {
         </div>
       </header>
 
-      {/* MAIN SEM SOBREPOSIÇÃO, SEMPRE OCUPANDO ÁREA ÚTIL */}
+      {/* MAIN */}
       <main className="flex-1 w-full min-h-0 h-0 overflow-hidden relative flex">
         <div className="flex-1 h-full w-full flex flex-col">
           <div className="flex-1 h-full w-full flex flex-col justify-stretch items-stretch">
@@ -213,7 +189,6 @@ export default function TvScreen() {
 
       {/* FOOTER PROFISSIONAL */}
       <footer className="w-full py-3 px-[4vw] bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] border-t border-[#1a2a44] flex items-center justify-between gap-8 shadow-lg z-10 min-h-17.5 max-h-22.5">
-        {/* AVISO PERSONALIZADO OU DEFAULT */}
         <div className="flex-1 text-left">
           {config.texto_aviso ? (
             <span
@@ -246,7 +221,7 @@ export default function TvScreen() {
           {/* DIVISOR */}
           <div className="h-10 w-px bg-blue-500/30"></div>
 
-          {/* MARÉ */}
+          {/* MARÉ DA API COM DB */}
           <div className="flex flex-col items-center flex-1 min-w-[120px]">
             <span className="text-sm uppercase tracking-wider font-bold text-white mb-0.5 drop-shadow-sm">
               MARÉ {tide.tendencia}
