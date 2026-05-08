@@ -19,20 +19,20 @@ export function DisplayYoutube({ youtubeLink }: DisplayYoutubeProps) {
 
   if (!embedUrl) {
     return (
-      <div className="tv-legacy tv-panel w-full h-full flex items-center justify-center bg-black">
-        <div className="text-center">
-          <div className="text-6xl mb-4">▶️</div>
-          <p className="text-3xl text-gray-400 font-semibold">Aguardando transmissão ao vivo...</p>
+      <div className="tv-legacy tv-panel tv-youtube-panel tv-center">
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '5rem', marginBottom: '1rem' }}>▶️</div>
+          <p style={{ fontSize: '2rem', color: 'rgba(148,163,184,0.95)', fontWeight: 600 }}>Aguardando transmissão ao vivo...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="tv-legacy tv-panel w-full h-full bg-black relative overflow-hidden pointer-events-none">
+    <div className="tv-legacy tv-panel tv-youtube-panel" style={{ background: '#000', position: 'relative', overflow: 'hidden' }}>
       <iframe
         src={embedUrl}
-        className="w-full h-full border-0"
+        className="tv-media-iframe"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
       />

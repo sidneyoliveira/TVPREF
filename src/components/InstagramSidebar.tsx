@@ -29,16 +29,16 @@ export function InstagramSidebar({ instagramLinks }: InstagramSidebarProps) {
   const currentInstaPost = instagramLinks[currentInstaIndex];
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-white">
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
       {currentInstaPost ? (
         <iframe
           src={getInstaEmbedUrl(currentInstaPost.url)}
-          className="w-full h-full border-none"
+          className="tv-media-iframe"
           scrolling="no"
           style={{ minHeight: '100%', objectFit: 'contain' }}
         ></iframe>
       ) : (
-        <p className="text-gray-500 text-center text-sm">Sem posts no Instagram</p>
+        <p style={{ color: 'rgba(148,163,184,0.95)', textAlign: 'center', fontSize: '0.9rem' }}>Sem posts no Instagram</p>
       )}
     </div>
   );

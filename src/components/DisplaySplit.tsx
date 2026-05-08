@@ -32,35 +32,35 @@ export function DisplaySplit({ config, instagramLinks }: DisplaySplitProps) {
   const youtubeEmbedUrl = config.youtube_link ? getYouTubeEmbedUrl(config.youtube_link) : null;
 
   return (
-    <div className="tv-legacy tv-panel w-full h-full flex gap-2 bg-black p-2">
+    <div className="tv-legacy tv-panel tv-split">
       {/* YouTube - 70% */}
-      <div className="flex-[7] bg-black rounded-lg overflow-hidden shadow-2xl relative pointer-events-none">
+      <div className="tv-split-main tv-pointer-none">
         {youtubeEmbedUrl ? (
           <iframe
             src={youtubeEmbedUrl}
-            className="w-full h-full border-0"
+            className="tv-media-iframe"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-gray-500 text-2xl">Aguardando transmissão...</p>
+          <div className="tv-center" style={{ height: '100%' }}>
+            <p style={{ color: 'rgba(148,163,184,0.95)', fontSize: '2rem' }}>Aguardando transmissão...</p>
           </div>
         )}
       </div>
 
       {/* Instagram - 30% */}
-      <div className="flex-[3] bg-dark-bg-secondary rounded-lg overflow-hidden flex shadow-2xl">
-        <div className="w-full h-full flex items-center justify-center bg-white">
+      <div className="tv-split-side">
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
           {currentInstaPost ? (
             <iframe
               src={getInstaEmbedUrl(currentInstaPost.url)}
-              className="w-full h-full border-none"
+              className="tv-media-iframe"
               scrolling="no"
               style={{ minHeight: '100%', objectFit: 'contain' }}
             ></iframe>
           ) : (
-            <p className="text-gray-500 text-center text-sm">Sem posts</p>
+            <p style={{ color: 'rgba(148,163,184,0.95)', textAlign: 'center', fontSize: '0.9rem' }}>Sem posts</p>
           )}
         </div>
       </div>
