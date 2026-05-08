@@ -35,7 +35,6 @@ export default function TvScreen() {
     waveHeight: null,
   });
 
-
   const [tide, setTide] = useState<TideInfo>({
     tendencia: '--',
     tipo: '--',
@@ -51,105 +50,7 @@ export default function TvScreen() {
     return format(currentDateTime, 'dd/MM/yyyy');
   }, [currentDateTime]);
 
-  const tvLegacyCss = `
-    #tv-legacy-root, #tv-legacy-root * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      color: #ffffff !important;
-      font-family: Arial, Helvetica, sans-serif !important;
-    }
-    #tv-legacy-root {
-      background: #0d1a2f !important;
-      min-height: 100vh;
-      width: 100%;
-      color: #ffffff;
-    }
-    #tv-legacy-root header,
-    #tv-legacy-root footer,
-    #tv-legacy-root .tv-main,
-    #tv-legacy-root .tv-panel,
-    #tv-legacy-root .tv-content,
-    #tv-legacy-root .tv-header-left,
-    #tv-legacy-root .tv-header-right,
-    #tv-legacy-root .tv-footer-box {
-      display: block !important;
-      width: 100% !important;
-      background: transparent !important;
-    }
-    #tv-legacy-root header {
-      background: #0d1a2f !important;
-      border-bottom: 2px solid #123a6d !important;
-      padding: 16px !important;
-    }
-    #tv-legacy-root footer {
-      background: #0d1a2f !important;
-      border-top: 2px solid #123a6d !important;
-      padding: 16px !important;
-    }
-    #tv-legacy-root .tv-header-left {
-      display: inline-block !important;
-      vertical-align: middle !important;
-      width: 55% !important;
-    }
-    #tv-legacy-root .tv-header-right {
-      display: inline-block !important;
-      vertical-align: middle !important;
-      width: 40% !important;
-      text-align: right !important;
-    }
-    #tv-legacy-root .tv-main {
-      background: #071121 !important;
-      padding: 16px !important;
-    }
-    #tv-legacy-root .tv-content {
-      background: #071121 !important;
-      border: 1px solid #1d2b47 !important;
-      padding: 16px !important;
-      border-radius: 12px !important;
-      min-height: 60vh !important;
-    }
-    #tv-legacy-root .tv-panel {
-      background: #071121 !important;
-      border: 1px solid #1d2b47 !important;
-      padding: 16px !important;
-      margin-bottom: 16px !important;
-      border-radius: 12px !important;
-    }
-    #tv-legacy-root .tv-footer-box {
-      background: rgba(16, 32, 64, 0.9) !important;
-      padding: 16px !important;
-      border-radius: 16px !important;
-      border: 1px solid #1a2a44 !important;
-    }
-    #tv-legacy-root .tv-title {
-      font-size: 3rem !important;
-      font-weight: bold !important;
-      margin-bottom: 12px !important;
-    }
-    #tv-legacy-root .tv-subtitle {
-      font-size: 1.5rem !important;
-      margin-bottom: 8px !important;
-    }
-    #tv-legacy-root .tv-text-large {
-      font-size: 2rem !important;
-      line-height: 1.1 !important;
-    }
-    #tv-legacy-root .tv-text-medium {
-      font-size: 1.25rem !important;
-    }
-    #tv-legacy-root img,
-    #tv-legacy-root iframe,
-    #tv-legacy-root video {
-      width: 100% !important;
-      max-width: 100% !important;
-      height: auto !important;
-      display: block !important;
-      border: none !important;
-    }
-  `;
-
-  // Carrega Clima e Maré (Scraper Oficial)
+  // Carrega Clima e Maré
   useEffect(() => {
     let cancelled = false;
 
@@ -196,96 +97,109 @@ export default function TvScreen() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#0d1a2f] text-white">
-        <p className="text-3xl animate-pulse font-medium">Iniciando sistema...</p>
+        <p className="text-4xl animate-pulse font-semibold tracking-wider">Iniciando sistema...</p>
       </div>
     );
   }
-  
 
   const renderDisplayMode = () => {
     let mainComponent;
     switch (config.display_mode) {
-      case 'image': mainComponent = <DisplayImage imageUrl={config.image_url || ''} title={config.announcement_title} description={config.announcement_text} />; break;
-      case 'announcement': mainComponent = <DisplayAnnouncement title={config.announcement_title || 'Aviso Importante'} text={config.announcement_text || 'Nenhum aviso configurado'} />; break;
-      case 'carousel': mainComponent = <DisplayCarousel images={carouselImages} />; break;
-      case 'split': mainComponent = <DisplaySplit config={config} instagramLinks={instagramLinks} />; break;
-      case 'youtube': default: mainComponent = <DisplayYoutube youtubeLink={config.youtube_link || ''} />; break;
+      case 'image': 
+        mainComponent = <DisplayImage imageUrl={config.image_url || ''} title={config.announcement_title} description={config.announcement_text} />; 
+        break;
+      case 'announcement': 
+        mainComponent = <DisplayAnnouncement title={config.announcement_title || 'Aviso Importante'} text={config.announcement_text || 'Nenhum aviso configurado'} />; 
+        break;
+      case 'carousel': 
+        mainComponent = <DisplayCarousel images={carouselImages} />; 
+        break;
+      case 'split': 
+        mainComponent = <DisplaySplit config={config} instagramLinks={instagramLinks} />; 
+        break;
+      case 'youtube': 
+      default: 
+        mainComponent = <DisplayYoutube youtubeLink={config.youtube_link || ''} />; 
+        break;
     }
     if (config.show_instagram) {
-      return <DisplayWithOptionalInstagram config={config} instagramLinks={instagramLinks}>{mainComponent}</DisplayWithOptionalInstagram>;
+      return (
+        <DisplayWithOptionalInstagram config={config} instagramLinks={instagramLinks}>
+          {mainComponent}
+        </DisplayWithOptionalInstagram>
+      );
     }
     return mainComponent;
   };
 
   return (
-    <div id="tv-legacy-root" className="flex flex-col h-screen w-full bg-linear-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-white font-sans overflow-hidden">
-      <style dangerouslySetInnerHTML={{ __html: tvLegacyCss }} />
+    <div className="flex flex-col h-screen w-screen bg-gradient-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-white font-sans overflow-hidden">
+      
       {/* HEADER */}
-      <header className="tv-header relative flex items-center justify-between w-full h-30 z-10 shadow-lg bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
-        <div className="tv-header-left flex items-center h-full pl-[4vw]">
+      <header className="flex-none flex items-center justify-between w-full h-32 px-10 shadow-2xl bg-[#091324]/80 border-b border-[#1a2a44] backdrop-blur-md z-10">
+        <div className="flex items-center h-full py-4">
           <Image
             src={logoBranca}
             alt="Logo Prefeitura"
             priority
-            className="object-contain h-24 w-auto max-w-55 drop-shadow-xl"
+            className="object-contain h-full w-auto max-w-[280px] drop-shadow-[0_0_15px_rgba(255,255,255,0.15)]"
           />
         </div>
-        <div className="flex flex-col items-end justify-center h-full pr-[4vw] select-none">
-          <span className="text-[4rem] font-bold text-white tracking-tight tabular-nums leading-none drop-shadow-2xl" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        
+        <div className="flex flex-col items-end justify-center h-full select-none">
+          <span className="text-[4.5rem] font-bold text-white tracking-tight tabular-nums leading-none drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
             {format(currentDateTime, 'HH:mm:ss')}
           </span>
-          <span className="text-xl font-bold text-blue-100 tracking-widest drop-shadow-md">
+          <span className="text-2xl font-bold text-blue-200 tracking-widest drop-shadow-md uppercase mt-1">
             {headerDate}
           </span>
         </div>
       </header>
 
       {/* MAIN */}
-      <main className="tv-main flex-1 w-full min-h-0 h-0 overflow-hidden relative flex">
-        <div className="flex-1 h-full w-full flex flex-col justify-stretch items-stretch">
-          <div className="tv-content">
-            {renderDisplayMode()}
-          </div>
+      <main className="flex-1 w-full p-6 overflow-hidden relative flex flex-col">
+        <div className="flex-1 w-full bg-[#071121]/80 rounded-3xl border border-[#1a2a44] shadow-inner overflow-hidden flex relative">
+           {renderDisplayMode()}
         </div>
       </main>
 
-      {/* FOOTER BLINDADO */}
-      <footer className="tv-footer w-full py-4 px-[4vw] bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] border-t border-[#1a2a44] flex items-center justify-between gap-6 shadow-lg z-10 min-h-[100px]">
+      {/* FOOTER */}
+      <footer className="flex-none w-full h-36 px-10 bg-[#091324]/90 border-t border-[#1a2a44] backdrop-blur-md flex items-center justify-between gap-8 shadow-[0_-10px_30px_rgba(0,0,0,0.3)] z-10">
         
         {/* TEXTO DA PREFEITURA / AVISO */}
-        <div className="flex-1 text-left overflow-hidden pr-4">
+        <div className="flex-1 text-left overflow-hidden">
           {config.texto_aviso ? (
             <span
-              className="text-3xl md:text-4xl font-bold uppercase leading-tight drop-shadow-md line-clamp-2"
-              style={{ color: config.aviso_text_color || '#fff' }}
+              className="text-4xl md:text-5xl font-extrabold uppercase leading-tight drop-shadow-lg line-clamp-2"
+              style={{ color: config.aviso_text_color || '#ffffff' }}
             >
               {config.texto_aviso}
             </span>
           ) : (
-            <span className="text-base text-blue-200 opacity-80 truncate block">
+            <span className="text-3xl text-blue-200/80 uppercase font-bold tracking-wider truncate block">
               Prefeitura de Itarema
             </span>
           )}
         </div>
 
-        {/* WIDGET DO CLIMA E MARÉ (Com shrink-0 para não amassar) */}
-        <div className="flex items-center justify-center gap-5 shrink-0 bg-[#102040]/90 px-6 py-2.5 rounded-2xl border border-[#1a2a44] w-max">
+        {/* WIDGET DO CLIMA E MARÉ */}
+        <div className="flex-none flex items-center justify-center gap-8 bg-[#102040] px-8 py-4 rounded-3xl border border-[#1a2a44] shadow-lg">
           
-          <div className="flex flex-col items-center min-w-[80px]">
-            <span className="text-[10px] uppercase tracking-widest font-bold text-blue-300 mb-0.5">Temp</span>
-            <span className="text-2xl font-black tabular-nums text-white">
+          <div className="flex flex-col items-center justify-center min-w-[100px]">
+            <span className="text-sm uppercase tracking-widest font-bold text-blue-300 mb-1">Temp</span>
+            <span className="text-4xl font-black tabular-nums text-white drop-shadow-md">
               {weather.temperatureC === null ? '--' : `${Math.round(weather.temperatureC)}°C`}
             </span>
           </div>
 
-          <div className="h-10 w-px bg-blue-500/30"></div>
+          <div className="h-16 w-[2px] bg-blue-500/30 rounded-full"></div>
 
-          <div className="flex flex-col items-center min-w-[150px]">
-            <span className="text-xs uppercase tracking-wider font-bold text-blue-100 mb-0.5">
+          <div className="flex flex-col items-center justify-center min-w-[200px]">
+            <span className="text-sm uppercase tracking-wider font-bold text-blue-300 mb-1">
               MARÉ {tide.tendencia}
             </span>
-            <span className="text-sm font-bold text-white tracking-wide">
-              MARÉ {tide.tipo} ÀS {tide.horario}
+            <span className="text-2xl font-extrabold text-white tracking-wide drop-shadow-md whitespace-nowrap">
+              {tide.tipo} ÀS {tide.horario}
             </span>
           </div>
 
