@@ -52,9 +52,9 @@ export async function GET() {
 
     // 4. Devolve o dado certinho para o Front-End
     if (minsAlta < minsBaixa) {
-      return NextResponse.json({ tendencia: 'SUBINDO', tipo: 'CHEIA', horario: proximaAlta });
+      return NextResponse.json({ tendencia: 'SUBINDO', tipo: 'MARÉ CHEIA', horario: proximaAlta });
     } else {
-      return NextResponse.json({ tendencia: 'DESCENDO', tipo: 'BAIXA', horario: proximaBaixa });
+      return NextResponse.json({ tendencia: 'DESCENDO', tipo: 'MARÉ BAIXA', horario: proximaBaixa });
     }
 
   } catch (error) {

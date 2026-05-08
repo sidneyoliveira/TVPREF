@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import { InstagramLink } from '@/hooks/useTvData';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { getInstagramEmbedUrl } from '@/lib/embed';
+import type { InstagramLink } from '@/lib/types';
 
 interface InstagramSidebarProps {
   instagramLinks: InstagramLink[];
@@ -16,29 +19,19 @@ export function InstagramSidebar({ instagramLinks }: InstagramSidebarProps) {
     return () => clearInterval(timer);
   }, [instagramLinks.length]);
 
-  const getInstaEmbedUrl = (url: string) => {
-    try {
-      const parsedUrl = new URL(url);
-      const cleanPath = parsedUrl.pathname.replace(/\/$/, '');
-      return `https://www.instagram.com${cleanPath}/embed`;
-    } catch {
-      return '';
-    }
-  };
-
   const currentInstaPost = instagramLinks[currentInstaIndex];
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+    <div className="tv-instagram-frame">
       {currentInstaPost ? (
         <iframe
-          src={getInstaEmbedUrl(currentInstaPost.url)}
+          title="Post do Instagram"
+          src={getInstagramEmbedUrl(currentInstaPost.url)}
           className="tv-media-iframe"
           scrolling="no"
-          style={{ minHeight: '100%', objectFit: 'contain' }}
         ></iframe>
       ) : (
-        <p style={{ color: 'rgba(148,163,184,0.95)', textAlign: 'center', fontSize: '0.9rem' }}>Sem posts no Instagram</p>
+        <p className="tv-instagram-empty">Sem posts no Instagram</p>
       )}
     </div>
   );

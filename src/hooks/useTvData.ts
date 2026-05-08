@@ -1,144 +1,168 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+"use client";
 
-export interface Configuracoes {
-  id?: number;
-  youtube_link: string;
-  texto_aviso: string;
-  display_mode: 'youtube' | 'image' | 'announcement' | 'carousel' | 'split';
-  image_url?: string;
-  announcement_title?: string;
-  announcement_text?: string;
-  show_instagram?: boolean;
-  aviso_bg_color?: string;
-  aviso_text_color?: string;
-  updated_at?: string;
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import {
+  defaultConfig,
+  DISPLAY_MODES,
+  type CarouselImage,
+  type Configuracoes,
+  type InstagramLink,
+} from "@/lib/types";
+
+export type { CarouselImage, Configuracoes, InstagramLink };
+
+type TvDataState = {
+  config: Configuracoes;
+  instagramLinks: InstagramLink[];
+  carouselImages: CarouselImage[];
+};
+
+const initialState: TvDataState = {
+  config: defaultConfig,
+  instagramLinks: [],
+  carouselImages: [],
+};
+
+function isDisplayMode(value: unknown): value is Configuracoes["display_mode"] {
+  return typeof value === "string" && DISPLAY_MODES.includes(value as Configuracoes["display_mode"]);
 }
 
-export interface InstagramLink {
-  id: string;
-  url: string;
-  ordem: number;
+function normalizeConfig(value: Partial<Configuracoes> | null): Configuracoes {
+  const displayMode = isDisplayMode(value?.display_mode)
+    ? value.display_mode
+    : defaultConfig.display_mode;
+
+  return {
+    ...defaultConfig,
+    ...value,
+    display_mode: displayMode,
+    show_instagram: Boolean(value?.show_instagram),
+    aviso_bg_color: value?.aviso_bg_color || defaultConfig.aviso_bg_color,
+    aviso_text_color: value?.aviso_text_color || defaultConfig.aviso_text_color,
+  };
 }
 
-export interface CarouselImage {
-  id: string;
-  imagem_url: string;
-  titulo?: string;
-  descricao?: string;
-  ordem: number;
+async function fetchConfig() {
+  const { data, error } = await supabase
+    .from("configuracoes")
+    .select("*")
+    .eq("id", 1)
+    .single();
+
+  if (error) {
+    console.error("Erro ao buscar configurações:", error);
+    return defaultConfig;
+  }
+
+  return normalizeConfig(data);
+}
+
+async function fetchInstagramLinks() {
+  const { data, error } = await supabase
+    .from("instagram_links")
+    .select("id,url,ordem")
+    .order("ordem", { ascending: true });
+
+  if (error) {
+    console.error("Erro ao buscar links do Instagram:", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+async function fetchCarouselImages() {
+  const { data, error } = await supabase
+    .from("carousel_images")
+    .select("id,imagem_url,titulo,descricao,ordem")
+    .order("ordem", { ascending: true });
+
+  if (error) {
+    console.error("Erro ao buscar carrossel:", error);
+    return [];
+  }
+
+  return data ?? [];
 }
 
 export function useTvData() {
-  const [config, setConfig] = useState<Configuracoes>({
-    youtube_link: '',
-    texto_aviso: 'Aguardando configurações...',
-    display_mode: 'youtube',
-  });
-  const [instagramLinks, setInstagramLinks] = useState<InstagramLink[]>([]);
-  const [carouselImages, setCarouselImages] = useState<CarouselImage[]>([]);
+  const [state, setState] = useState<TvDataState>(initialState);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    try {
-      // Fetch Config
-      const { data: configData, error: configError } = await supabase
-        .from('configuracoes')
-        .select('*')
-        .eq('id', 1)
-        .single();
-      
-      if (configError) {
-        console.error('Erro ao buscar configurações:', configError);
-      } else if (configData) {
-        setConfig(configData);
-      }
+  const refetch = useCallback(async () => {
+    const [config, instagramLinks, carouselImages] = await Promise.all([
+      fetchConfig(),
+      fetchInstagramLinks(),
+      fetchCarouselImages(),
+    ]);
 
-      // Fetch Instagram Links
-      const { data: instaData, error: instaError } = await supabase
-        .from('instagram_links')
-        .select('*')
-        .order('ordem', { ascending: true });
-      
-      if (instaError) {
-        console.error('Erro ao buscar links:', instaError);
-      } else if (instaData) {
-        setInstagramLinks(instaData);
-      }
-
-      // Fetch Carousel Images
-      const { data: carouselData, error: carouselError } = await supabase
-        .from('carousel_images')
-        .select('*')
-        .order('ordem', { ascending: true });
-      
-      if (carouselError) {
-        console.error('Erro ao buscar carrossel:', carouselError);
-      } else if (carouselData) {
-        setCarouselImages(carouselData);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar dados:', error);
-    } finally {
-      setLoading(false);
-    }
+    setState({ config, instagramLinks, carouselImages });
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    // Fetch initial data
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchData();
+    let active = true;
 
-    // Subscribe to realtime changes
-    const subscription = supabase
-      .channel('public:all-changes')
+    async function loadInitialData() {
+      const [config, instagramLinks, carouselImages] = await Promise.all([
+        fetchConfig(),
+        fetchInstagramLinks(),
+        fetchCarouselImages(),
+      ]);
+
+      if (!active) return;
+
+      setState({ config, instagramLinks, carouselImages });
+      setLoading(false);
+    }
+
+    void loadInitialData();
+
+    const channel = supabase
+      .channel("tv-dashboard")
       .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'configuracoes',
-        },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "configuracoes" },
         (payload) => {
-          console.log('Configuração atualizada via realtime:', payload);
           if (payload.new) {
-            setConfig(payload.new as Configuracoes);
+            setState((current) => ({
+              ...current,
+              config: normalizeConfig(payload.new as Partial<Configuracoes>),
+            }));
           }
-        }
+        },
       )
       .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'instagram_links',
+        "postgres_changes",
+        { event: "*", schema: "public", table: "instagram_links" },
+        async () => {
+          const instagramLinks = await fetchInstagramLinks();
+          setState((current) => ({ ...current, instagramLinks }));
         },
-        () => {
-          console.log('Instagram links atualizados');
-          fetchData();
-        }
       )
       .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'carousel_images',
+        "postgres_changes",
+        { event: "*", schema: "public", table: "carousel_images" },
+        async () => {
+          const carouselImages = await fetchCarouselImages();
+          setState((current) => ({ ...current, carouselImages }));
         },
-        () => {
-          console.log('Carousel images atualizadas');
-          fetchData();
-        }
       )
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status);
-      });
+      .subscribe();
 
-    // Cleanup subscription
     return () => {
-      supabase.removeChannel(subscription);
+      active = false;
+      void supabase.removeChannel(channel);
     };
-  }, [fetchData]);
+  }, []);
 
-  return { config, instagramLinks, carouselImages, loading, refetch: fetchData };
+  return useMemo(
+    () => ({
+      ...state,
+      loading,
+      refetch,
+    }),
+    [loading, refetch, state],
+  );
 }

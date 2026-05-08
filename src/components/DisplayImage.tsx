@@ -15,6 +15,7 @@ export function DisplayImage({ imageUrl, title, description }: DisplayImageProps
 
   return (
     <div className="tv-legacy tv-panel tv-image-panel">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={imageUrl}
         alt={title || 'Imagem'}

@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  const { password } = await request.json();
-  const validPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const { password } = (await request.json()) as { password?: unknown };
+  const validPassword = process.env.ADMIN_PASSWORD || "admin123";
 
-  if (password === validPassword) {
+  if (typeof password === "string" && password === validPassword) {
     return NextResponse.json({ success: true });
   }
 

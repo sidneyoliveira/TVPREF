@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { CarouselImage } from '@/hooks/useTvData';
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { isVideoAsset } from '@/lib/embed';
+import type { CarouselImage } from '@/lib/types';
 
 interface DisplayCarouselProps {
   images: CarouselImage[];
@@ -7,19 +10,19 @@ interface DisplayCarouselProps {
 
 export function DisplayCarousel({ images }: DisplayCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     if (images.length > 1) {
       setCurrentIndex((prev) => (prev + 1) % images.length);
     }
-  };
+  }, [images.length]);
 
   useEffect(() => {
     if (images.length === 0) return;
     
-    const currentMedia = images[currentIndex].imagem_url;
-    const isVideo = currentMedia.match(/\.(mp4|webm|ogg)$/i);
+    const currentMedia = images[currentIndex]?.imagem_url ?? '';
+    const isVideo = isVideoAsset(currentMedia);
 
     // Limpa timer anterior
     if (timerRef.current) clearInterval(timerRef.current);
@@ -33,7 +36,7 @@ export function DisplayCarousel({ images }: DisplayCarouselProps) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [currentIndex, images]);
+  }, [currentIndex, goToNext, images]);
 
   if (images.length === 0) {
     return (
@@ -44,7 +47,7 @@ export function DisplayCarousel({ images }: DisplayCarouselProps) {
   }
 
   const currentImage = images[currentIndex];
-  const isVideo = currentImage.imagem_url.match(/\.(mp4|webm|ogg)$/i);
+  const isVideo = isVideoAsset(currentImage.imagem_url);
 
   return (
     <div className="tv-legacy tv-panel tv-carousel">
@@ -59,6 +62,7 @@ export function DisplayCarousel({ images }: DisplayCarouselProps) {
           onEnded={goToNext}
         />
       ) : (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={currentImage.imagem_url}
           alt={currentImage.titulo || 'Carrossel'}
