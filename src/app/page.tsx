@@ -36,6 +36,7 @@ export default function TvScreen() {
     temperatureC: null,
     waveHeight: null,
   });
+  
 
   const [tide, setTide] = useState<TideInfo>({
     tendencia: '--',
