@@ -206,11 +206,11 @@ export default function TvScreen() {
 
           <div className="h-10 w-px bg-blue-500/30"></div>
 
-          <div className="flex flex-col items-center flex-1 min-w-[120px]">
-            <span className="text-sm uppercase tracking-wider font-bold text-white mb-0.5 drop-shadow-sm">
+          <div className="flex flex-col items-center flex-1 min-w-50">
+            <span className="text-lg uppercase tracking-wider font-bold text-white mb-0.5 drop-shadow-sm">
               MARÉ {tide.tendencia}
             </span>
-            <span className="text-xs font-medium text-blue-300/80 tracking-wide whitespace-nowrap">
+            <span className="text-md font-medium text-blue-300/80 tracking-wide whitespace-nowrap">
               MARÉ {tide.tipo} ÀS {tide.horario}
             </span>
           </div>
