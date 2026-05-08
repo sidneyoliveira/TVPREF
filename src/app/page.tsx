@@ -50,7 +50,7 @@ export default function TvScreen() {
     return format(currentDateTime, 'dd/MM/yyyy');
   }, [currentDateTime]);
 
-  // Carrega Clima (Open-Meteo) e Maré (Nosso Scraper sem limites)
+  // Carrega Clima e Maré (Scraper Oficial)
   useEffect(() => {
     let cancelled = false;
 
@@ -86,7 +86,7 @@ export default function TvScreen() {
     }
 
     loadData();
-    const t = setInterval(loadData, 10 * 60 * 1000); // 10 minutos
+    const t = setInterval(loadData, 10 * 60 * 1000); 
     
     return () => {
       cancelled = true;
@@ -96,8 +96,8 @@ export default function TvScreen() {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#0d1a2f] text-white">
-        <p className="text-3xl animate-pulse font-medium">Oi, Iniciando sistema...</p>
+      <div className="flex h-screen items-center justify-center bg-[#0d1a2f] text-white">
+        <p className="text-3xl animate-pulse font-medium">Iniciando sistema...</p>
       </div>
     );
   }
@@ -105,63 +105,33 @@ export default function TvScreen() {
   const renderDisplayMode = () => {
     let mainComponent;
     switch (config.display_mode) {
-      case 'image':
-        mainComponent = (
-          <DisplayImage
-            imageUrl={config.image_url || ''}
-            title={config.announcement_title}
-            description={config.announcement_text}
-          />
-        );
-        break;
-      case 'announcement':
-        mainComponent = (
-          <DisplayAnnouncement
-            title={config.announcement_title || 'Aviso Importante'}
-            text={config.announcement_text || 'Nenhum aviso configurado'}
-          />
-        );
-        break;
-      case 'carousel':
-        mainComponent = <DisplayCarousel images={carouselImages} />;
-        break;
-      case 'split':
-        mainComponent = <DisplaySplit config={config} instagramLinks={instagramLinks} />;
-        break;
-      case 'youtube':
-      default:
-        mainComponent = <DisplayYoutube youtubeLink={config.youtube_link || ''} />;
-        break;
+      case 'image': mainComponent = <DisplayImage imageUrl={config.image_url || ''} title={config.announcement_title} description={config.announcement_text} />; break;
+      case 'announcement': mainComponent = <DisplayAnnouncement title={config.announcement_title || 'Aviso Importante'} text={config.announcement_text || 'Nenhum aviso configurado'} />; break;
+      case 'carousel': mainComponent = <DisplayCarousel images={carouselImages} />; break;
+      case 'split': mainComponent = <DisplaySplit config={config} instagramLinks={instagramLinks} />; break;
+      case 'youtube': default: mainComponent = <DisplayYoutube youtubeLink={config.youtube_link || ''} />; break;
     }
-
     if (config.show_instagram) {
-      return (
-        <DisplayWithOptionalInstagram config={config} instagramLinks={instagramLinks}>
-          {mainComponent}
-        </DisplayWithOptionalInstagram>
-      );
+      return <DisplayWithOptionalInstagram config={config} instagramLinks={instagramLinks}>{mainComponent}</DisplayWithOptionalInstagram>;
     }
-
     return mainComponent;
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-gradient-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-white font-sans overflow-hidden">
+    <div className="flex flex-col h-screen w-full bg-linear-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-white font-sans overflow-hidden">
+      
       {/* HEADER */}
-      <header className="relative flex items-center justify-between w-full h-[120px] z-10 shadow-lg bg-gradient-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
+      <header className="relative flex items-center justify-between w-full h-30 z-10 shadow-lg bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
         <div className="flex items-center h-full pl-[4vw]">
           <Image
             src={logoBranca}
             alt="Logo Prefeitura"
             priority
-            className="object-contain h-[80px] w-auto max-w-[250px] drop-shadow-xl"
+            className="object-contain h-24 w-auto max-w-55 drop-shadow-xl"
           />
         </div>
         <div className="flex flex-col items-end justify-center h-full pr-[4vw] select-none">
-          <span
-            className="text-[4rem] font-bold text-white tracking-tight leading-none drop-shadow-2xl"
-            style={{ fontVariantNumeric: 'tabular-nums' }}
-          >
+          <span className="text-[4rem] font-bold text-white tracking-tight tabular-nums leading-none drop-shadow-2xl" style={{ fontVariantNumeric: 'tabular-nums' }}>
             {format(currentDateTime, 'HH:mm:ss')}
           </span>
           <span className="text-xl font-bold text-blue-100 tracking-widest drop-shadow-md">
@@ -171,16 +141,14 @@ export default function TvScreen() {
       </header>
 
       {/* MAIN */}
-      <main className="flex-1 w-full min-h-0 overflow-hidden relative flex">
-        <div className="flex-1 h-full w-full flex flex-col">
-          <div className="flex-1 h-full w-full flex flex-col justify-stretch items-stretch">
-            {renderDisplayMode()}
-          </div>
+      <main className="flex-1 w-full min-h-0 h-0 overflow-hidden relative flex">
+        <div className="flex-1 h-full w-full flex flex-col justify-stretch items-stretch">
+          {renderDisplayMode()}
         </div>
       </main>
 
-      {/* FOOTER BLINDADO CONTRA QUEBRAS */}
-      <footer className="w-full py-4 px-[4vw] bg-gradient-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] border-t border-[#1a2a44] flex items-center justify-between gap-6 shadow-lg z-10 min-h-[100px]">
+      {/* FOOTER BLINDADO */}
+      <footer className="w-full py-4 px-[4vw] bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] border-t border-[#1a2a44] flex items-center justify-between gap-6 shadow-lg z-10 min-h-[100px]">
         
         {/* TEXTO DA PREFEITURA / AVISO */}
         <div className="flex-1 text-left overflow-hidden pr-4">
@@ -198,17 +166,13 @@ export default function TvScreen() {
           )}
         </div>
 
-        {/* WIDGET DO CLIMA E MARÉ */}
+        {/* WIDGET DO CLIMA E MARÉ (Com shrink-0 para não amassar) */}
         <div className="flex items-center justify-center gap-5 shrink-0 bg-[#102040]/90 px-6 py-2.5 rounded-2xl border border-[#1a2a44] w-max">
           
           <div className="flex flex-col items-center min-w-[80px]">
-            <span className="text-[10px] uppercase tracking-widest font-bold text-blue-300 mb-0.5">
-              Temp
-            </span>
+            <span className="text-[10px] uppercase tracking-widest font-bold text-blue-300 mb-0.5">Temp</span>
             <span className="text-2xl font-black tabular-nums text-white">
-              {weather.temperatureC === null
-                ? '--'
-                : `${Math.round(weather.temperatureC)}°C`}
+              {weather.temperatureC === null ? '--' : `${Math.round(weather.temperatureC)}°C`}
             </span>
           </div>
 
