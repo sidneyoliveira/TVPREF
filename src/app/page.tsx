@@ -51,6 +51,104 @@ export default function TvScreen() {
     return format(currentDateTime, 'dd/MM/yyyy');
   }, [currentDateTime]);
 
+  const tvLegacyCss = `
+    #tv-legacy-root, #tv-legacy-root * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      color: #ffffff !important;
+      font-family: Arial, Helvetica, sans-serif !important;
+    }
+    #tv-legacy-root {
+      background: #0d1a2f !important;
+      min-height: 100vh;
+      width: 100%;
+      color: #ffffff;
+    }
+    #tv-legacy-root header,
+    #tv-legacy-root footer,
+    #tv-legacy-root .tv-main,
+    #tv-legacy-root .tv-panel,
+    #tv-legacy-root .tv-content,
+    #tv-legacy-root .tv-header-left,
+    #tv-legacy-root .tv-header-right,
+    #tv-legacy-root .tv-footer-box {
+      display: block !important;
+      width: 100% !important;
+      background: transparent !important;
+    }
+    #tv-legacy-root header {
+      background: #0d1a2f !important;
+      border-bottom: 2px solid #123a6d !important;
+      padding: 16px !important;
+    }
+    #tv-legacy-root footer {
+      background: #0d1a2f !important;
+      border-top: 2px solid #123a6d !important;
+      padding: 16px !important;
+    }
+    #tv-legacy-root .tv-header-left {
+      display: inline-block !important;
+      vertical-align: middle !important;
+      width: 55% !important;
+    }
+    #tv-legacy-root .tv-header-right {
+      display: inline-block !important;
+      vertical-align: middle !important;
+      width: 40% !important;
+      text-align: right !important;
+    }
+    #tv-legacy-root .tv-main {
+      background: #071121 !important;
+      padding: 16px !important;
+    }
+    #tv-legacy-root .tv-content {
+      background: #071121 !important;
+      border: 1px solid #1d2b47 !important;
+      padding: 16px !important;
+      border-radius: 12px !important;
+      min-height: 60vh !important;
+    }
+    #tv-legacy-root .tv-panel {
+      background: #071121 !important;
+      border: 1px solid #1d2b47 !important;
+      padding: 16px !important;
+      margin-bottom: 16px !important;
+      border-radius: 12px !important;
+    }
+    #tv-legacy-root .tv-footer-box {
+      background: rgba(16, 32, 64, 0.9) !important;
+      padding: 16px !important;
+      border-radius: 16px !important;
+      border: 1px solid #1a2a44 !important;
+    }
+    #tv-legacy-root .tv-title {
+      font-size: 3rem !important;
+      font-weight: bold !important;
+      margin-bottom: 12px !important;
+    }
+    #tv-legacy-root .tv-subtitle {
+      font-size: 1.5rem !important;
+      margin-bottom: 8px !important;
+    }
+    #tv-legacy-root .tv-text-large {
+      font-size: 2rem !important;
+      line-height: 1.1 !important;
+    }
+    #tv-legacy-root .tv-text-medium {
+      font-size: 1.25rem !important;
+    }
+    #tv-legacy-root img,
+    #tv-legacy-root iframe,
+    #tv-legacy-root video {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto !important;
+      display: block !important;
+      border: none !important;
+    }
+  `;
+
   // Carrega Clima e Maré (Scraper Oficial)
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +219,7 @@ export default function TvScreen() {
 
   return (
     <div id="tv-legacy-root" className="flex flex-col h-screen w-full bg-linear-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-white font-sans overflow-hidden">
+      <style dangerouslySetInnerHTML={{ __html: tvLegacyCss }} />
       {/* HEADER */}
       <header className="tv-header relative flex items-center justify-between w-full h-30 z-10 shadow-lg bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
         <div className="tv-header-left flex items-center h-full pl-[4vw]">
