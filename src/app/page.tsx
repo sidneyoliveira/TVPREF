@@ -1,4 +1,3 @@
-// src/app/page.tsx
 'use client';
 
 import { useTvData } from '@/hooks/useTvData';
@@ -47,7 +46,9 @@ export default function TvScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const headerDate = useMemo(() => format(currentDateTime, 'dd/MM/yyyy'), [currentDateTime]);
+  const headerDate = useMemo(() => {
+    return format(currentDateTime, 'dd/MM/yyyy');
+  }, [currentDateTime]);
 
   // Carrega Clima (Open-Meteo) e Maré (Nosso Scraper sem limites)
   useEffect(() => {
@@ -145,7 +146,8 @@ export default function TvScreen() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-linear-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-dark-text-primary font-sans">
+    <div className="flex flex-col h-screen w-full bg-linear-to-b from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] text-dark-text-primary font-sans overflow-hidden">
+      {/* HEADER */}
       <header className="relative flex items-center justify-between w-full h-30 z-10 shadow-lg bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f]">
         <div className="flex items-center h-full pl-[4vw]">
           <Image
@@ -168,6 +170,7 @@ export default function TvScreen() {
         </div>
       </header>
 
+      {/* MAIN */}
       <main className="flex-1 w-full min-h-0 h-0 overflow-hidden relative flex">
         <div className="flex-1 h-full w-full flex flex-col">
           <div className="flex-1 h-full w-full flex flex-col justify-stretch items-stretch">
@@ -176,28 +179,33 @@ export default function TvScreen() {
         </div>
       </main>
 
-      <footer className="w-full py-3 px-[4vw] bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] border-t border-[#1a2a44] flex items-center justify-between gap-8 shadow-lg z-10 min-h-17.5 max-h-22.5">
-        <div className="flex-1 text-left">
+      {/* FOOTER BLINDADO CONTRA QUEBRAS */}
+      <footer className="w-full py-4 px-[4vw] bg-linear-to-r from-[#0d1a2f] via-[#123a6d] to-[#0d1a2f] border-t border-[#1a2a44] flex items-center justify-between gap-6 shadow-lg z-10 min-h-[100px]">
+        
+        {/* TEXTO DA PREFEITURA / AVISO */}
+        <div className="flex-1 text-left overflow-hidden pr-4">
           {config.texto_aviso ? (
             <span
-              className="text-4xl md:text-4xl font-bold uppercase tracking-normal leading-tight wrap-break-word drop-shadow-md"
+              className="text-3xl md:text-4xl font-bold uppercase leading-tight drop-shadow-md line-clamp-2"
               style={{ color: config.aviso_text_color || '#fff' }}
             >
               {config.texto_aviso}
             </span>
           ) : (
-            <span className="text-base text-blue-200 opacity-80">
+            <span className="text-base text-blue-200 opacity-80 truncate block">
               Prefeitura de Itarema
             </span>
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-6 shrink-0 bg-[#102040]/80 px-6 py-3 rounded-2xl border border-[#1a2a44] min-w-[280px]">
-          <div className="flex flex-col items-center flex-1">
-            <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-blue-300 mb-1">
-              Temperatura
+        {/* WIDGET DO CLIMA E MARÉ */}
+        <div className="flex items-center justify-center gap-5 shrink-0 bg-[#102040]/90 px-6 py-2.5 rounded-2xl border border-[#1a2a44] w-max">
+          
+          <div className="flex flex-col items-center min-w-[80px]">
+            <span className="text-[10px] uppercase tracking-widest font-bold text-blue-300 mb-0.5">
+              Temp
             </span>
-            <span className="text-2xl font-black tabular-nums text-white drop-shadow-md">
+            <span className="text-2xl font-black tabular-nums text-white">
               {weather.temperatureC === null
                 ? '--'
                 : `${Math.round(weather.temperatureC)}°C`}
@@ -206,14 +214,15 @@ export default function TvScreen() {
 
           <div className="h-10 w-px bg-blue-500/30"></div>
 
-          <div className="flex flex-col items-center flex-1 min-w-50">
-            <span className="text-lg uppercase tracking-wider font-bold text-white mb-0.5 drop-shadow-sm">
+          <div className="flex flex-col items-center min-w-[150px]">
+            <span className="text-xs uppercase tracking-wider font-bold text-blue-100 mb-0.5">
               MARÉ {tide.tendencia}
             </span>
-            <span className="text-md font-medium text-blue-300/80 tracking-wide whitespace-nowrap">
+            <span className="text-sm font-bold text-white tracking-wide">
               MARÉ {tide.tipo} ÀS {tide.horario}
             </span>
           </div>
+
         </div>
       </footer>
     </div>
