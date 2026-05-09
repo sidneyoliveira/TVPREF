@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { subscribeTvDataChange } from "@/lib/tv-sync";
 import {
   defaultConfig,
   DISPLAY_MODES,
@@ -148,6 +149,10 @@ export function useTvData() {
 
     void loadInitialData();
 
+    const refreshFromSignal = () => {
+      void refetch();
+    };
+
     const channel = supabase
       .channel("tv-dashboard")
       .on(
@@ -184,11 +189,16 @@ export function useTvData() {
       )
       .subscribe();
 
+    const unsubscribeTvDataChange = subscribeTvDataChange(refreshFromSignal);
+    const refreshInterval = window.setInterval(refreshFromSignal, 2500);
+
     return () => {
       active = false;
+      window.clearInterval(refreshInterval);
+      unsubscribeTvDataChange();
       void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [refetch]);
 
   return useMemo(
     () => ({

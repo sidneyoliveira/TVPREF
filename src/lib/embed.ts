@@ -56,5 +56,9 @@ export function getInstagramEmbedUrl(url: string) {
 }
 
 export function isVideoAsset(url: string) {
-  return /\.(mp4|webm|ogg)$/i.test(url);
+  try {
+    return /\.(mp4|webm|ogg)$/i.test(new URL(url).pathname);
+  } catch {
+    return /\.(mp4|webm|ogg)$/i.test(url.split("?")[0] ?? url);
+  }
 }

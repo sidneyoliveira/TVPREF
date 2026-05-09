@@ -2,6 +2,9 @@
 -- 1) Múltiplos avisos em fila
 -- 2) Cores gerais da tela da TV
 
+ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS show_instagram boolean DEFAULT false;
+ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS aviso_bg_color text DEFAULT '#123a70';
+ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS aviso_text_color text DEFAULT '#ffffff';
 ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS theme_primary_color text DEFAULT '#08244f';
 ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS theme_secondary_color text DEFAULT '#04142e';
 ALTER TABLE configuracoes ADD COLUMN IF NOT EXISTS theme_accent_color text DEFAULT '#2b7be4';

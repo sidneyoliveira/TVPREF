@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   isMissingColumnError,
@@ -47,28 +48,28 @@ function getOptionalOverrides(body: ConfigRequestBody): Partial<Configuracoes> {
   };
 }
 
+async function getCurrentConfigForMerge() {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data, error } = await supabaseAdmin.from("configuracoes").select("*").eq("id", 1).single();
+
+  if (error) throw error;
+
+  const storageOverrides = needsStorageColorFallback(data)
+    ? await readSettingsJson<Partial<Configuracoes>>(
+        supabaseAdmin,
+        SETTINGS_PATHS.configOverrides,
+        {},
+      )
+    : {};
+
+  return { supabaseAdmin, currentConfig: { ...defaultConfig, ...data, ...storageOverrides } };
+}
+
 export async function GET() {
   try {
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data, error } = await supabaseAdmin
-      .from("configuracoes")
-      .select("*")
-      .eq("id", 1)
-      .single();
+    const { currentConfig } = await getCurrentConfigForMerge();
 
-    if (error) {
-      throw error;
-    }
-
-    const storageOverrides = needsStorageColorFallback(data)
-      ? await readSettingsJson<Partial<Configuracoes>>(
-          supabaseAdmin,
-          SETTINGS_PATHS.configOverrides,
-          {},
-        )
-      : {};
-
-    return NextResponse.json({ ...defaultConfig, ...data, ...storageOverrides });
+    return NextResponse.json(currentConfig);
   } catch (error) {
     console.error("Admin config fetch error:", error);
     return NextResponse.json({ error: "Erro ao buscar configurações" }, { status: 500 });
@@ -76,9 +77,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
-    const supabaseAdmin = getSupabaseAdmin();
-    const body = (await request.json()) as ConfigRequestBody;
+    const { supabaseAdmin, currentConfig } = await getCurrentConfigForMerge();
+    const body = {
+      ...currentConfig,
+      ...((await request.json()) as ConfigRequestBody),
+    } as ConfigRequestBody;
 
     const baseUpdate = {
       youtube_link: optionalText(body.youtube_link),

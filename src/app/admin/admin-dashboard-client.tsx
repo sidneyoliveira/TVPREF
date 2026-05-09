@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   GalleryHorizontal,
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTvData } from "@/hooks/useTvData";
-import { supabase } from "@/lib/supabase";
+import { notifyTvDataChange } from "@/lib/tv-sync";
 import { DISPLAY_MODES, type Announcement, type Configuracoes, type DisplayMode } from "@/lib/types";
 import logoBranca from "@/img/logo_branca.png";
 
@@ -53,10 +53,18 @@ type AnnouncementFormState = {
 type PersistOptions = {
   successMessage?: string;
   silent?: boolean;
+  partial?: boolean;
 };
 
-const ADMIN_AUTH_KEY = "adminAuthenticated";
-const ADMIN_AUTH_EVENT = "tvpref-admin-auth-changed";
+type AuthStatus = "checking" | "authenticated" | "anonymous";
+
+type LoginResponse = {
+  authenticated?: boolean;
+};
+
+type ErrorResponse = {
+  error?: string;
+};
 
 const DEFAULT_FORM: ConfigFormState = {
   youtube_link: "",
@@ -94,6 +102,14 @@ const MODE_OPTIONS: Array<{
   { id: "split", label: "Split", icon: SplitSquareHorizontal },
 ];
 
+const MODE_LABELS = MODE_OPTIONS.reduce(
+  (labels, mode) => ({
+    ...labels,
+    [mode.id]: mode.label,
+  }),
+  {} as Record<DisplayMode, string>,
+);
+
 function toFormState(config: Configuracoes): ConfigFormState {
   return {
     youtube_link: config.youtube_link || "",
@@ -120,38 +136,6 @@ function fileNameFromUrl(url: string) {
   }
 }
 
-function createMediaFileName(fileExtension: string) {
-  const fallbackId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  const id =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : fallbackId;
-
-  return `${id}.${fileExtension}`;
-}
-
-function subscribeAdminAuth(onStoreChange: () => void) {
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener(ADMIN_AUTH_EVENT, onStoreChange);
-
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener(ADMIN_AUTH_EVENT, onStoreChange);
-  };
-}
-
-function getAdminAuthSnapshot() {
-  return localStorage.getItem(ADMIN_AUTH_KEY) === "true";
-}
-
-function getServerAuthSnapshot() {
-  return false;
-}
-
-function notifyAdminAuthChange() {
-  window.dispatchEvent(new Event(ADMIN_AUTH_EVENT));
-}
-
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="admin-field-label">{children}</label>;
 }
@@ -169,11 +153,7 @@ function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Tv
 }
 
 export function AdminDashboardClient() {
-  const isAuthenticated = useSyncExternalStore(
-    subscribeAdminAuth,
-    getAdminAuthSnapshot,
-    getServerAuthSnapshot,
-  );
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const [password, setPassword] = useState("");
   const [form, setForm] = useState<ConfigFormState>(DEFAULT_FORM);
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -190,6 +170,26 @@ export function AdminDashboardClient() {
   const carouselInputRef = useRef<HTMLInputElement>(null);
 
   const { config, instagramLinks, carouselImages, announcements, loading, refetch } = useTvData();
+
+  useEffect(() => {
+    let active = true;
+
+    void fetch("/api/login", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return false;
+        const payload = (await response.json()) as LoginResponse;
+        return Boolean(payload.authenticated);
+      })
+      .catch(() => false)
+      .then((authenticated) => {
+        if (!active) return;
+        setAuthStatus(authenticated ? "authenticated" : "anonymous");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading && !hasInitialized) {
@@ -219,6 +219,20 @@ export function AdminDashboardClient() {
   const currentMode = MODE_OPTIONS.find((mode) => mode.id === form.display_mode) ?? MODE_OPTIONS[0];
   const activeAnnouncementsCount = announcements.filter((announcement) => announcement.is_active).length;
 
+  async function ensureOk(response: Response, fallbackMessage: string) {
+    if (response.ok) return;
+
+    const payload = (await response.json().catch(() => null)) as ErrorResponse | null;
+    const message = payload?.error || fallbackMessage;
+
+    if (response.status === 401) {
+      setAuthStatus("anonymous");
+      throw new Error("Sessão expirada. Faça login novamente.");
+    }
+
+    throw new Error(message);
+  }
+
   async function persistConfig(overrides: Partial<ConfigFormState> = {}, options: PersistOptions = {}) {
     const payload = {
       ...form,
@@ -229,6 +243,7 @@ export function AdminDashboardClient() {
       aviso_bg_color: payload.theme_primary_color,
       aviso_text_color: "#ffffff",
     };
+    const requestPayload = options.partial ? overrides : payloadWithThemeLetreiro;
 
     setIsSaving(true);
 
@@ -236,21 +251,24 @@ export function AdminDashboardClient() {
       const response = await fetch("/api/admin/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadWithThemeLetreiro),
+        body: JSON.stringify(requestPayload),
       });
 
-      if (!response.ok) {
-        throw new Error("Falha ao salvar configurações");
-      }
+      await ensureOk(response, "Falha ao salvar configurações");
 
-      setForm(payloadWithThemeLetreiro);
+      if (options.partial) {
+        setForm((current) => ({ ...current, ...overrides }));
+      } else {
+        setForm(payloadWithThemeLetreiro);
+      }
+      notifyTvDataChange();
       await refetch();
 
       if (!options.silent) {
         toast.success(options.successMessage || "Configurações salvas.");
       }
     } catch (error) {
-      toast.error("Erro ao salvar configurações.");
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar configurações.");
       throw error;
     } finally {
       setIsSaving(false);
@@ -272,26 +290,34 @@ export function AdminDashboardClient() {
         return;
       }
 
-      localStorage.setItem(ADMIN_AUTH_KEY, "true");
-      notifyAdminAuthChange();
+      setAuthStatus("authenticated");
+      setPassword("");
       toast.success("Login realizado.");
     } catch {
       toast.error("Erro ao tentar fazer login.");
     }
   }
 
-  function handleLogout() {
-    localStorage.removeItem(ADMIN_AUTH_KEY);
-    notifyAdminAuthChange();
-    setPassword("");
+  async function handleLogout() {
+    try {
+      await fetch("/api/login", { method: "DELETE" });
+    } finally {
+      setAuthStatus("anonymous");
+      setPassword("");
+    }
   }
 
   async function handleModeChange(mode: DisplayMode) {
+    if (mode === form.display_mode) return;
+
     const previousMode = form.display_mode;
     setForm((current) => ({ ...current, display_mode: mode }));
 
     try {
-      await persistConfig({ display_mode: mode }, { successMessage: `Modo alterado para ${mode}.` });
+      await persistConfig(
+        { display_mode: mode },
+        { successMessage: `Modo alterado para ${MODE_LABELS[mode]}.`, partial: true },
+      );
     } catch {
       setForm((current) => ({ ...current, display_mode: previousMode }));
     }
@@ -304,7 +330,10 @@ export function AdminDashboardClient() {
     try {
       await persistConfig(
         { show_instagram: nextValue },
-        { successMessage: nextValue ? "Instagram lateral ligado." : "Instagram lateral desligado." },
+        {
+          successMessage: nextValue ? "Instagram lateral ligado." : "Instagram lateral desligado.",
+          partial: true,
+        },
       );
     } catch {
       setForm((current) => ({ ...current, show_instagram: !nextValue }));
@@ -315,18 +344,21 @@ export function AdminDashboardClient() {
     try {
       setIsUploading(true);
 
-      const fileExt = file.name.split(".").pop() || "bin";
-      const filePath = `uploads/${createMediaFileName(fileExt)}`;
+      const formData = new FormData();
+      formData.append("file", file);
 
-      const { error: uploadError } = await supabase.storage.from("media").upload(filePath, file);
+      const response = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-      if (uploadError) throw uploadError;
+      await ensureOk(response, "Falha no upload");
 
-      const { data } = supabase.storage.from("media").getPublicUrl(filePath);
-      return data.publicUrl;
+      const payload = (await response.json()) as { publicUrl?: string };
+      return payload.publicUrl || null;
     } catch (error) {
       console.error("Upload error:", error);
-      toast.error('Erro no upload. Confira o bucket "media".');
+      toast.error(error instanceof Error ? error.message : 'Erro no upload. Confira o bucket "media".');
       return null;
     } finally {
       setIsUploading(false);
@@ -370,12 +402,13 @@ export function AdminDashboardClient() {
         body: JSON.stringify({ imagem_url: mediaUrl, titulo: "", descricao: "" }),
       });
 
-      if (!response.ok) throw new Error("Falha ao salvar mídia");
+      await ensureOk(response, "Falha ao salvar mídia");
 
+      notifyTvDataChange();
       await refetch();
       toast.success("Mídia adicionada ao carrossel.", { id: "upload-carousel" });
-    } catch {
-      toast.error("Erro ao salvar mídia.", { id: "upload-carousel" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar mídia.", { id: "upload-carousel" });
     } finally {
       event.target.value = "";
     }
@@ -396,13 +429,14 @@ export function AdminDashboardClient() {
         body: JSON.stringify({ url }),
       });
 
-      if (!response.ok) throw new Error("Falha ao adicionar link");
+      await ensureOk(response, "Falha ao adicionar link");
 
       setNewInstagramUrl("");
+      notifyTvDataChange();
       await refetch();
       toast.success("Post adicionado.");
-    } catch {
-      toast.error("Erro ao adicionar link.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao adicionar link.");
     }
   }
 
@@ -411,12 +445,13 @@ export function AdminDashboardClient() {
 
     try {
       const response = await fetch(`/api/admin/instagram?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Falha ao remover link");
+      await ensureOk(response, "Falha ao remover link");
 
+      notifyTvDataChange();
       await refetch();
       toast.success("Post removido.");
-    } catch {
-      toast.error("Erro ao remover post.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao remover post.");
     }
   }
 
@@ -425,12 +460,13 @@ export function AdminDashboardClient() {
 
     try {
       const response = await fetch(`/api/admin/carousel?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Falha ao remover mídia");
+      await ensureOk(response, "Falha ao remover mídia");
 
+      notifyTvDataChange();
       await refetch();
       toast.success("Mídia removida.");
-    } catch {
-      toast.error("Erro ao remover mídia.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao remover mídia.");
     }
   }
 
@@ -475,13 +511,14 @@ export function AdminDashboardClient() {
         }),
       });
 
-      if (!response.ok) throw new Error("Falha ao salvar aviso");
+      await ensureOk(response, "Falha ao salvar aviso");
 
       resetAnnouncementForm();
+      notifyTvDataChange();
       await refetch();
       toast.success(editingAnnouncementId ? "Aviso atualizado." : "Aviso criado.");
-    } catch {
-      toast.error("Erro ao salvar aviso.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar aviso.");
     } finally {
       setIsSavingAnnouncement(false);
     }
@@ -492,16 +529,17 @@ export function AdminDashboardClient() {
 
     try {
       const response = await fetch(`/api/admin/announcements?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Falha ao remover aviso");
+      await ensureOk(response, "Falha ao remover aviso");
 
       if (editingAnnouncementId === id) {
         resetAnnouncementForm();
       }
 
+      notifyTvDataChange();
       await refetch();
       toast.success("Aviso removido.");
-    } catch {
-      toast.error("Erro ao remover aviso.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao remover aviso.");
     }
   }
 
@@ -516,16 +554,31 @@ export function AdminDashboardClient() {
         }),
       });
 
-      if (!response.ok) throw new Error("Falha ao alterar aviso");
+      await ensureOk(response, "Falha ao alterar aviso");
 
+      notifyTvDataChange();
       await refetch();
       toast.success(!announcement.is_active ? "Aviso ativado." : "Aviso pausado.");
-    } catch {
-      toast.error("Erro ao alterar aviso.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao alterar aviso.");
     }
   }
 
-  if (!isAuthenticated) {
+  if (authStatus === "checking") {
+    return (
+      <main className="admin-login-shell">
+        <div className="admin-login-card">
+          <div className="admin-login-logo">
+            <Image src={logoBranca} alt="Prefeitura de Itarema" height={58} priority className="admin-logo-image" />
+          </div>
+          <div className="admin-skeleton admin-login-auth-skeleton" />
+          <div className="admin-skeleton admin-login-auth-line" />
+        </div>
+      </main>
+    );
+  }
+
+  if (authStatus !== "authenticated") {
     return (
       <main className="admin-login-shell">
         <form onSubmit={handleLogin} className="admin-login-card">
@@ -579,7 +632,7 @@ export function AdminDashboardClient() {
               className="admin-button admin-button-success"
             >
               <Save size={16} />
-              <span>{isSaving ? "Salvando" : "Salvar"}</span>
+            <span>{isSaving ? "Salvando" : "Salvar conteúdo"}</span>
             </button>
             <button type="button" onClick={handleLogout} className="admin-button admin-button-ghost">
               <LogOut size={16} />

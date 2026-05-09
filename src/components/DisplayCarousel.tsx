@@ -18,10 +18,12 @@ export function DisplayCarousel({ images }: DisplayCarouselProps) {
     }
   }, [images.length]);
 
+  const safeCurrentIndex = images.length > 0 ? currentIndex % images.length : 0;
+
   useEffect(() => {
     if (images.length === 0) return;
     
-    const currentMedia = images[currentIndex]?.imagem_url ?? '';
+    const currentMedia = images[safeCurrentIndex]?.imagem_url ?? "";
     const isVideo = isVideoAsset(currentMedia);
 
     // Limpa timer anterior
@@ -36,7 +38,7 @@ export function DisplayCarousel({ images }: DisplayCarouselProps) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [currentIndex, goToNext, images]);
+  }, [goToNext, images, safeCurrentIndex]);
 
   if (images.length === 0) {
     return (
@@ -46,7 +48,7 @@ export function DisplayCarousel({ images }: DisplayCarouselProps) {
     );
   }
 
-  const currentImage = images[currentIndex];
+  const currentImage = images[safeCurrentIndex];
   const isVideo = isVideoAsset(currentImage.imagem_url);
 
   return (
@@ -84,14 +86,14 @@ export function DisplayCarousel({ images }: DisplayCarouselProps) {
 
       {/* Indicadores */}
       <div className="tv-indicators">
-        {images.map((_, i) => (
-          <div key={i} className={`tv-indicator ${i === currentIndex ? 'active' : ''}`} />
+        {images.map((image, i) => (
+          <div key={image.id} className={`tv-indicator ${i === safeCurrentIndex ? 'active' : ''}`} />
         ))}
       </div>
 
       {/* Contador */}
       <div className="tv-counter">
-        {currentIndex + 1} / {images.length}
+        {safeCurrentIndex + 1} / {images.length}
       </div>
     </div>
   );

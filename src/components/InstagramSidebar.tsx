@@ -10,6 +10,7 @@ interface InstagramSidebarProps {
 
 export function InstagramSidebar({ instagramLinks }: InstagramSidebarProps) {
   const [currentInstaIndex, setCurrentInstaIndex] = useState(0);
+  const safeCurrentIndex = instagramLinks.length > 0 ? currentInstaIndex % instagramLinks.length : 0;
 
   useEffect(() => {
     if (instagramLinks.length <= 1) return;
@@ -19,7 +20,7 @@ export function InstagramSidebar({ instagramLinks }: InstagramSidebarProps) {
     return () => clearInterval(timer);
   }, [instagramLinks.length]);
 
-  const currentInstaPost = instagramLinks[currentInstaIndex];
+  const currentInstaPost = instagramLinks[safeCurrentIndex];
 
   return (
     <div className="tv-instagram-frame">
