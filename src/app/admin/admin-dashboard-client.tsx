@@ -165,9 +165,11 @@ export function AdminDashboardClient() {
   const [announcementForm, setAnnouncementForm] = useState<AnnouncementFormState>(DEFAULT_ANNOUNCEMENT_FORM);
   const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
   const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
+  const [previewScale, setPreviewScale] = useState(1);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const carouselInputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const { config, instagramLinks, carouselImages, announcements, loading, refetch } = useTvData();
 
@@ -190,6 +192,18 @@ export function AdminDashboardClient() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setPreviewScale(entry.contentRect.width / 1920);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [authStatus]);
 
   useEffect(() => {
     if (!loading && !hasInitialized) {
@@ -764,6 +778,22 @@ export function AdminDashboardClient() {
         </div>
 
         <div className="admin-column admin-column-wide">
+          <Panel title="Pré-visualização (16:9 - TV 43&quot;)" icon={Tv}>
+            <div className="admin-tv-preview" ref={previewRef}>
+              <iframe 
+                src="/" 
+                title="TV Live Preview"
+                style={{
+                  width: "1920px",
+                  height: "1080px",
+              maxWidth: "none",
+              pointerEvents: "none",
+                  transform: `scale(${previewScale})`
+                }}
+              />
+            </div>
+          </Panel>
+
           <Panel title="Imagem Fixa / Fallback" icon={LayoutTemplate}>
             <div className="admin-content-form">
               <div className="admin-field-stack">
@@ -966,7 +996,9 @@ export function AdminDashboardClient() {
               </table>
             </div>
           </Panel>
+        </div>
 
+        <div className="admin-column">
           <Panel title="Galeria do Carrossel" icon={GalleryHorizontal}>
             <div className="admin-toolbar">
               <div className="admin-input-shell">

@@ -1050,6 +1050,24 @@ button:disabled {
   object-fit: cover;
 }
 
+.admin-tv-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgba(145, 183, 232, 0.18);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #04142e;
+}
+
+.admin-tv-preview iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: none;
+  transform-origin: top left;
+}
+
 .admin-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
