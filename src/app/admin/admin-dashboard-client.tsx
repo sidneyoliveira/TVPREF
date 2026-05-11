@@ -778,7 +778,7 @@ export function AdminDashboardClient() {
         </div>
 
         <div className="admin-column admin-column-wide">
-          <Panel title="Pré-visualização (16:9 - TV 43&quot;)" icon={Tv}>
+          <Panel title="Pré-visualização" icon={Tv}>
             <div className="admin-tv-preview" ref={previewRef}>
               <iframe 
                 src="/" 
@@ -793,58 +793,7 @@ export function AdminDashboardClient() {
               />
             </div>
           </Panel>
-
-          <Panel title="Imagem Fixa / Fallback" icon={LayoutTemplate}>
-            <div className="admin-content-form">
-              <div className="admin-field-stack">
-                <FieldLabel>Título</FieldLabel>
-                <input
-                  type="text"
-                  value={form.announcement_title}
-                  onChange={(event) => setForm((current) => ({ ...current, announcement_title: event.target.value }))}
-                  className="admin-control"
-                  placeholder="Título do aviso ou imagem"
-                />
-              </div>
-              <div className="admin-field-stack admin-content-text">
-                <FieldLabel>Texto</FieldLabel>
-                <textarea
-                  value={form.announcement_text}
-                  onChange={(event) => setForm((current) => ({ ...current, announcement_text: event.target.value }))}
-                  className="admin-control admin-textarea admin-textarea-large"
-                  placeholder="Descrição do aviso"
-                />
-              </div>
-              <div className="admin-field-stack">
-                <FieldLabel>Imagem fixa</FieldLabel>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={imageInputRef}
-                  className="admin-hidden-input"
-                  onChange={handleSingleImageUpload}
-                />
-                <button
-                  type="button"
-                  onClick={() => imageInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="admin-button admin-button-outline admin-button-full"
-                >
-                  <UploadCloud size={16} />
-                  <span>Enviar imagem</span>
-                </button>
-              </div>
-            </div>
-
-            {form.image_url && (
-              <div className="admin-preview-frame">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.image_url} alt="Preview da imagem fixa" className="admin-preview-image" />
-              </div>
-            )}
-          </Panel>
-
-          <Panel title="Avisos de Tela" icon={Megaphone}>
+<Panel title="Avisos de Tela" icon={Megaphone}>
             <div className="admin-announcement-editor">
               <div className="admin-content-form admin-announcement-form">
                 <div className="admin-field-stack">
@@ -996,9 +945,129 @@ export function AdminDashboardClient() {
               </table>
             </div>
           </Panel>
+          <Panel title="Imagem Fixa / Fallback" icon={LayoutTemplate}>
+            <div className="admin-content-form">
+              <div className="admin-field-stack">
+                <FieldLabel>Título</FieldLabel>
+                <input
+                  type="text"
+                  value={form.announcement_title}
+                  onChange={(event) => setForm((current) => ({ ...current, announcement_title: event.target.value }))}
+                  className="admin-control"
+                  placeholder="Título do aviso ou imagem"
+                />
+              </div>
+              <div className="admin-field-stack admin-content-text">
+                <FieldLabel>Texto</FieldLabel>
+                <textarea
+                  value={form.announcement_text}
+                  onChange={(event) => setForm((current) => ({ ...current, announcement_text: event.target.value }))}
+                  className="admin-control admin-textarea admin-textarea-large"
+                  placeholder="Descrição do aviso"
+                />
+              </div>
+              <div className="admin-field-stack">
+                <FieldLabel>Imagem fixa</FieldLabel>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={imageInputRef}
+                  className="admin-hidden-input"
+                  onChange={handleSingleImageUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="admin-button admin-button-outline admin-button-full"
+                >
+                  <UploadCloud size={16} />
+                  <span>Enviar imagem</span>
+                </button>
+              </div>
+            </div>
+
+            {form.image_url && (
+              <div className="admin-preview-frame">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.image_url} alt="Preview da imagem fixa" className="admin-preview-image" />
+              </div>
+            )}
+          </Panel>
+
+          
         </div>
 
         <div className="admin-column">
+          <Panel title="Posts do Instagram" icon={LayoutTemplate}>
+            <div className="admin-field-stack">
+              <div className="admin-input-shell">
+                <Link2 size={15} className="admin-input-icon" />
+                <input
+                  type="url"
+                  value={newInstagramUrl}
+                  onChange={(event) => setNewInstagramUrl(event.target.value)}
+                  className="admin-control admin-control-borderless"
+                  placeholder="https://instagram.com/p/..."
+                />
+                <button type="button" onClick={addInstagramLink} className="admin-small-action" aria-label="Adicionar post">
+                  <Plus size={16} />
+                </button>
+              </div>
+              <div className="admin-input-shell">
+                <Search size={15} className="admin-input-icon" />
+                <input
+                  value={instagramFilter}
+                  onChange={(event) => setInstagramFilter(event.target.value)}
+                  className="admin-control admin-control-borderless"
+                  placeholder="Filtrar posts"
+                />
+              </div>
+            </div>
+
+            <div className="admin-table-wrap admin-table-tall">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th className="admin-col-order">#</th>
+                    <th>URL</th>
+                    <th className="admin-col-action">Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredInstagramLinks.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="admin-empty-cell">
+                        Nenhum post encontrado.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredInstagramLinks.map((post) => (
+                      <tr key={post.id}>
+                        <td className="admin-muted">{post.ordem}</td>
+                        <td>
+                          <a href={post.url} target="_blank" rel="noreferrer" className="admin-table-link">
+                            {post.url}
+                          </a>
+                        </td>
+                        <td className="admin-cell-action">
+                          <button
+                            type="button"
+                            onClick={() => removeInstagramLink(post.id)}
+                            className="admin-icon-button"
+                            aria-label="Remover post"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+
           <Panel title="Galeria do Carrossel" icon={GalleryHorizontal}>
             <div className="admin-toolbar">
               <div className="admin-input-shell">
@@ -1060,77 +1129,6 @@ export function AdminDashboardClient() {
                             onClick={() => removeCarouselImage(media.id)}
                             className="admin-icon-button"
                             aria-label="Remover mídia"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
-        </div>
-
-        <div className="admin-column">
-          <Panel title="Posts do Instagram" icon={LayoutTemplate}>
-            <div className="admin-field-stack">
-              <div className="admin-input-shell">
-                <Link2 size={15} className="admin-input-icon" />
-                <input
-                  type="url"
-                  value={newInstagramUrl}
-                  onChange={(event) => setNewInstagramUrl(event.target.value)}
-                  className="admin-control admin-control-borderless"
-                  placeholder="https://instagram.com/p/..."
-                />
-                <button type="button" onClick={addInstagramLink} className="admin-small-action" aria-label="Adicionar post">
-                  <Plus size={16} />
-                </button>
-              </div>
-              <div className="admin-input-shell">
-                <Search size={15} className="admin-input-icon" />
-                <input
-                  value={instagramFilter}
-                  onChange={(event) => setInstagramFilter(event.target.value)}
-                  className="admin-control admin-control-borderless"
-                  placeholder="Filtrar posts"
-                />
-              </div>
-            </div>
-
-            <div className="admin-table-wrap admin-table-tall">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th className="admin-col-order">#</th>
-                    <th>URL</th>
-                    <th className="admin-col-action">Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredInstagramLinks.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="admin-empty-cell">
-                        Nenhum post encontrado.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredInstagramLinks.map((post) => (
-                      <tr key={post.id}>
-                        <td className="admin-muted">{post.ordem}</td>
-                        <td>
-                          <a href={post.url} target="_blank" rel="noreferrer" className="admin-table-link">
-                            {post.url}
-                          </a>
-                        </td>
-                        <td className="admin-cell-action">
-                          <button
-                            type="button"
-                            onClick={() => removeInstagramLink(post.id)}
-                            className="admin-icon-button"
-                            aria-label="Remover post"
                           >
                             <Trash2 size={15} />
                           </button>
