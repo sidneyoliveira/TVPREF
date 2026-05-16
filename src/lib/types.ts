@@ -43,6 +43,7 @@ export interface Announcement {
   text: string;
   bg_color: string;
   text_color: string;
+  font_size?: number | null;
   ordem: number;
   is_active: boolean;
   image_url?: string | null;
@@ -72,6 +73,10 @@ export interface SponsorLogo {
   id: string;
   name: string;
   logo_url: string;
+  display_type?: "image" | "text";
+  bg_color?: string | null;
+  text_color?: string | null;
+  font_size?: number | null;
   ordem: number;
   created_at?: string | null;
   updated_at?: string | null;

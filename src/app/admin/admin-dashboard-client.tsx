@@ -47,6 +47,7 @@ type AnnouncementFormState = {
   text: string;
   bg_color: string;
   text_color: string;
+  font_size: number;
   ordem: number;
   is_active: boolean;
   image_url: string;
@@ -92,6 +93,7 @@ const DEFAULT_ANNOUNCEMENT_FORM: AnnouncementFormState = {
   text: "",
   bg_color: "#123a70",
   text_color: "#ffffff",
+  font_size: 48,
   ordem: 0,
   is_active: true,
   image_url: "",
@@ -593,6 +595,7 @@ export function AdminDashboardClient() {
       text: announcement.text,
       bg_color: announcement.bg_color,
       text_color: announcement.text_color,
+      font_size: announcement.font_size || 48,
       ordem: announcement.ordem,
       is_active: announcement.is_active,
       image_url: announcement.image_url || "",
@@ -624,6 +627,7 @@ export function AdminDashboardClient() {
           title,
           text,
           ordem: announcementForm.ordem || announcements.length + 1,
+          font_size: announcementForm.font_size,
         }),
       });
 
@@ -1084,6 +1088,20 @@ export function AdminDashboardClient() {
                       className="admin-color-input"
                     />
                   </label>
+                </div>
+                <div className="admin-field-stack" style={{ marginTop: 16 }}>
+                  <FieldLabel>Tamanho do texto ({announcementForm.font_size}px)</FieldLabel>
+                  <input
+                    type="range"
+                    min={24}
+                    max={120}
+                    step={2}
+                    value={announcementForm.font_size}
+                    onChange={(event) =>
+                      setAnnouncementForm((current) => ({ ...current, font_size: Number(event.target.value) }))
+                    }
+                    style={{ width: '100%' }}
+                  />
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px', padding: '16px', backgroundColor: '#061b3d', borderRadius: '8px' }}>

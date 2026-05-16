@@ -9,6 +9,7 @@ interface DisplayAnnouncementProps {
   text: string;
   bgColor?: string | null;
   textColor?: string | null;
+  fontSize?: number | null;
 }
 
 function getAnnouncementStyle(bgColor?: string | null, textColor?: string | null) {
@@ -18,12 +19,14 @@ function getAnnouncementStyle(bgColor?: string | null, textColor?: string | null
   } as CSSProperties & Record<"--announcement-bg-color" | "--announcement-text-color", string>;
 }
 
-export function DisplayAnnouncement({ title, text, bgColor, textColor }: DisplayAnnouncementProps) {
+export function DisplayAnnouncement({ title, text, bgColor, textColor, fontSize }: DisplayAnnouncementProps) {
   return (
     <div className="tv-legacy tv-panel tv-announcement" style={getAnnouncementStyle(bgColor, textColor)}>
       <div className="tv-announcement-inner">
         <h1 className="tv-announcement-title">{title}</h1>
-        <p className="tv-announcement-text">{text}</p>
+        <p className="tv-announcement-text" style={{ fontSize: fontSize ? `${fontSize}px` : undefined }}>
+          {text}
+        </p>
       </div>
     </div>
   );
@@ -105,6 +108,7 @@ export function DisplayAnnouncementQueue({
       text={currentAnnouncement.text}
       bgColor={currentAnnouncement.bg_color}
       textColor={currentAnnouncement.text_color}
+      fontSize={currentAnnouncement.font_size}
     />
   );
 }

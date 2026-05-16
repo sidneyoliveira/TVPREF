@@ -42,9 +42,23 @@ type PersistOptions = {
   silent?: boolean;
 };
 
+type TextSponsorFormState = {
+  name: string;
+  bg_color: string;
+  text_color: string;
+  font_size: number;
+};
+
 const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FRAME_DIMENSION = 2800;
 const MAX_LOGO_DIMENSION = 1800;
+
+const DEFAULT_TEXT_SPONSOR_FORM: TextSponsorFormState = {
+  name: "",
+  bg_color: "#123a70",
+  text_color: "#ffffff",
+  font_size: 48,
+};
 
 const TRANSITION_OPTIONS: Array<{ id: AnuncioTransitionStyle; label: string }> = [
   { id: "fade", label: "Fade" },
@@ -159,6 +173,7 @@ export function AnuncioAdminClient() {
 
   const frameInputRef = useRef<HTMLInputElement>(null);
   const sponsorInputRef = useRef<HTMLInputElement>(null);
+  const [textSponsorForm, setTextSponsorForm] = useState<TextSponsorFormState>(DEFAULT_TEXT_SPONSOR_FORM);
 
   const sortedSponsors = useMemo(
     () => [...draft.sponsors].sort((left, right) => left.ordem - right.ordem),
@@ -403,6 +418,39 @@ export function AnuncioAdminClient() {
     toast.success("Patrocinadores adicionados.", { id: "sponsors-upload" });
   }
 
+  async function addTextSponsor() {
+    const name = textSponsorForm.name.trim();
+
+    if (!name) {
+      toast.error("Preencha o nome ou texto do patrocinador.");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const nextSponsor: SponsorLogo = {
+      id: crypto.randomUUID(),
+      name,
+      logo_url: "",
+      display_type: "text",
+      bg_color: textSponsorForm.bg_color,
+      text_color: textSponsorForm.text_color,
+      font_size: textSponsorForm.font_size,
+      ordem: draft.sponsors.length + 1,
+      created_at: now,
+      updated_at: now,
+    };
+
+    const nextSettings = {
+      ...draft,
+      sponsors: [...draft.sponsors, nextSponsor],
+    };
+
+    setDraft(nextSettings);
+    setTextSponsorForm(DEFAULT_TEXT_SPONSOR_FORM);
+    await persistSettings(nextSettings, { successMessage: "Patrocinador de texto adicionado.", silent: true });
+    toast.success("Patrocinador de texto adicionado.");
+  }
+
   async function removeFrame() {
     const nextSettings = {
       ...draft,
@@ -425,6 +473,43 @@ export function AnuncioAdminClient() {
 
     setDraft(nextSettings);
     await persistSettings(nextSettings, { successMessage: "Patrocinador removido." });
+  }
+
+  async function changeSponsorOrder(id: string) {
+    const sorted = sortedSponsors;
+    const sponsor = sorted.find((item) => item.id === id);
+    if (!sponsor) return;
+
+    const max = sorted.length;
+    const userInput = window.prompt(
+      `Mover patrocinador "${sponsor.name}" para qual posição? (1-${max})`,
+      String(sponsor.ordem),
+    );
+
+    if (!userInput) return;
+
+    const nextPosition = Number(userInput.trim());
+    if (!Number.isInteger(nextPosition) || nextPosition < 1 || nextPosition > max) {
+      toast.error(`Digite um número entre 1 e ${max}.`);
+      return;
+    }
+
+    const currentIndex = sorted.findIndex((item) => item.id === id);
+    const targetIndex = nextPosition - 1;
+    if (currentIndex === targetIndex) return;
+
+    const reordered = [...sorted];
+    const [movedSponsor] = reordered.splice(currentIndex, 1);
+    reordered.splice(targetIndex, 0, movedSponsor);
+
+    const nextSettings = {
+      ...draft,
+      sponsors: reordered.map((item, index) => ({ ...item, ordem: index + 1 })),
+    };
+
+    setDraft(nextSettings);
+    await persistSettings(nextSettings, { successMessage: "Ordem de patrocinadores atualizada.", silent: true });
+    toast.success("Ordem de patrocinadores atualizada.");
   }
 
   async function saveDraft() {
@@ -653,6 +738,65 @@ export function AnuncioAdminClient() {
               </button>
             </div>
 
+            <div className="anuncio-admin-text-sponsor-card">
+              <div className="anuncio-admin-text-sponsor-header">
+                <div>
+                  <strong>Adicionar patrocinador de texto</strong>
+                  <span>Use texto, cores e tamanho para criar um bloco elegante.</span>
+                </div>
+              </div>
+              <div className="anuncio-admin-text-sponsor-grid">
+                <label className="anuncio-admin-field">
+                  <AnuncioFieldLabel>Nome / texto</AnuncioFieldLabel>
+                  <input
+                    type="text"
+                    value={textSponsorForm.name}
+                    onChange={(event) => setTextSponsorForm((current) => ({ ...current, name: event.target.value }))}
+                    className="anuncio-admin-control"
+                    placeholder="FULANO DE TAL"
+                  />
+                </label>
+                <label className="anuncio-admin-field">
+                  <AnuncioFieldLabel>Cor de fundo</AnuncioFieldLabel>
+                  <input
+                    type="color"
+                    value={textSponsorForm.bg_color}
+                    onChange={(event) => setTextSponsorForm((current) => ({ ...current, bg_color: event.target.value }))}
+                    className="anuncio-admin-color-input"
+                  />
+                </label>
+                <label className="anuncio-admin-field">
+                  <AnuncioFieldLabel>Cor do texto</AnuncioFieldLabel>
+                  <input
+                    type="color"
+                    value={textSponsorForm.text_color}
+                    onChange={(event) => setTextSponsorForm((current) => ({ ...current, text_color: event.target.value }))}
+                    className="anuncio-admin-color-input"
+                  />
+                </label>
+                <label className="anuncio-admin-field anuncio-admin-fontsize-field">
+                  <AnuncioFieldLabel>Tamanho do texto ({textSponsorForm.font_size}px)</AnuncioFieldLabel>
+                  <input
+                    type="range"
+                    min={24}
+                    max={120}
+                    step={2}
+                    value={textSponsorForm.font_size}
+                    onChange={(event) => setTextSponsorForm((current) => ({ ...current, font_size: Number(event.target.value) }))}
+                    className="anuncio-admin-control"
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => void addTextSponsor().catch(() => undefined)}
+                className="anuncio-admin-button anuncio-admin-button-outline"
+              >
+                <Plus size={16} />
+                <span>Adicionar como texto</span>
+              </button>
+            </div>
+
             <div className="anuncio-admin-sponsor-list">
               {sortedSponsors.length === 0 ? (
                 <div className="anuncio-admin-empty-list">
@@ -674,8 +818,21 @@ export function AnuncioAdminClient() {
                       <GripVertical size={17} />
                     </div>
                     <div className="anuncio-admin-sponsor-thumb">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={sponsor.logo_url} alt={sponsor.name} />
+                      {sponsor.display_type === "text" || !sponsor.logo_url ? (
+                        <div
+                          className="anuncio-admin-text-sponsor-preview"
+                          style={{
+                            backgroundColor: sponsor.bg_color || "#123a70",
+                            color: sponsor.text_color || "#ffffff",
+                            fontSize: sponsor.font_size ? `${sponsor.font_size}px` : "18px",
+                          }}
+                        >
+                          {sponsor.name}
+                        </div>
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={sponsor.logo_url} alt={sponsor.name} />
+                      )}
                     </div>
                     <input
                       value={sponsor.name}
@@ -689,7 +846,14 @@ export function AnuncioAdminClient() {
                       className="anuncio-admin-control anuncio-admin-sponsor-name"
                       aria-label="Nome do patrocinador"
                     />
-                    <span className="anuncio-admin-order-pill">{index + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => void changeSponsorOrder(sponsor.id).catch(() => undefined)}
+                      className="anuncio-admin-order-pill anuncio-admin-order-button"
+                      aria-label={`Alterar ordem do patrocinador ${sponsor.name}`}
+                    >
+                      {index + 1}
+                    </button>
                     <button
                       type="button"
                       onClick={() => void removeSponsor(sponsor.id).catch(() => undefined)}

@@ -31,6 +31,11 @@ function asNumber(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+function asColor(value: unknown, fallback: string) {
+  if (typeof value !== "string") return fallback;
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -40,16 +45,21 @@ function isTransitionStyle(value: unknown): value is AnuncioSettings["transition
 }
 
 function normalizeSponsor(value: Partial<SponsorLogo>, fallbackOrder: number): SponsorLogo | null {
+  const displayType = value.display_type === "text" ? "text" : "image";
+  const name = asText(value.name, "Patrocinador").trim() || "Patrocinador";
   const logoUrl = asText(value.logo_url).trim();
-
-  if (!logoUrl) return null;
-
   const now = new Date().toISOString();
+
+  if (displayType === "image" && !logoUrl) return null;
 
   return {
     id: asText(value.id).trim() || crypto.randomUUID(),
-    name: asText(value.name, "Patrocinador").trim() || "Patrocinador",
-    logo_url: logoUrl,
+    name,
+    logo_url: displayType === "image" ? logoUrl : "",
+    display_type: displayType,
+    bg_color: asColor(value.bg_color, "#123a70"),
+    text_color: asColor(value.text_color, "#ffffff"),
+    font_size: asNumber(value.font_size, 48),
     ordem: asNumber(value.ordem, fallbackOrder) || fallbackOrder,
     created_at: asText(value.created_at, now),
     updated_at: asText(value.updated_at, now),

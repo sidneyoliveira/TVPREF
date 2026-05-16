@@ -55,14 +55,27 @@ export function AnuncioDisplay({ settings, variant = "fullscreen" }: AnuncioDisp
       <div className="anuncio-sponsor-window">
         {currentSponsor ? (
           <div key={currentSponsor.id} className="anuncio-sponsor-slide">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={currentSponsor.logo_url}
-              alt={currentSponsor.name}
-              className="anuncio-sponsor-logo"
-              decoding="async"
-              loading={variant === "fullscreen" ? "eager" : "lazy"}
-            />
+            {currentSponsor.display_type === "text" || !currentSponsor.logo_url ? (
+              <div
+                className="anuncio-sponsor-text-card"
+                style={{
+                  backgroundColor: currentSponsor.bg_color || "#123a70",
+                  color: currentSponsor.text_color || "#ffffff",
+                  fontSize: currentSponsor.font_size ? `${currentSponsor.font_size}px` : "48px",
+                }}
+              >
+                {currentSponsor.name}
+              </div>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentSponsor.logo_url}
+                alt={currentSponsor.name}
+                className="anuncio-sponsor-logo"
+                decoding="async"
+                loading={variant === "fullscreen" ? "eager" : "lazy"}
+              />
+            )}
           </div>
         ) : (
           <div className="anuncio-empty-state">
@@ -72,10 +85,12 @@ export function AnuncioDisplay({ settings, variant = "fullscreen" }: AnuncioDisp
       </div>
 
       <div className="anuncio-preload" aria-hidden="true">
-        {sponsors.map((sponsor) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={sponsor.id} src={sponsor.logo_url} alt="" />
-        ))}
+        {sponsors.map((sponsor) =>
+          sponsor.display_type === "text" || !sponsor.logo_url ? null : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={sponsor.id} src={sponsor.logo_url} alt="" />
+          ),
+        )}
       </div>
     </div>
   );

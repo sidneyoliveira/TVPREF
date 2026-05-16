@@ -27,15 +27,22 @@ function normalizeSponsors(value: unknown): SponsorLogo[] {
 
   return value
     .filter((item): item is Partial<SponsorLogo> => Boolean(item) && typeof item === "object")
-    .map((item, index) => ({
-      id: typeof item.id === "string" && item.id ? item.id : `sponsor-${index + 1}`,
-      name: typeof item.name === "string" && item.name.trim() ? item.name : "Patrocinador",
-      logo_url: typeof item.logo_url === "string" ? item.logo_url : "",
-      ordem: typeof item.ordem === "number" && Number.isFinite(item.ordem) ? item.ordem : index + 1,
-      created_at: typeof item.created_at === "string" ? item.created_at : null,
-      updated_at: typeof item.updated_at === "string" ? item.updated_at : null,
-    }))
-    .filter((item) => item.logo_url)
+    .map((item, index) => {
+      const displayType: SponsorLogo["display_type"] = item.display_type === "text" ? "text" : "image";
+      return {
+        id: typeof item.id === "string" && item.id ? item.id : `sponsor-${index + 1}`,
+        name: typeof item.name === "string" && item.name.trim() ? item.name : "Patrocinador",
+        logo_url: typeof item.logo_url === "string" ? item.logo_url : "",
+        display_type: displayType,
+        bg_color: typeof item.bg_color === "string" ? item.bg_color : "#123a70",
+        text_color: typeof item.text_color === "string" ? item.text_color : "#ffffff",
+        font_size: typeof item.font_size === "number" && Number.isFinite(item.font_size) ? item.font_size : 48,
+        ordem: typeof item.ordem === "number" && Number.isFinite(item.ordem) ? item.ordem : index + 1,
+        created_at: typeof item.created_at === "string" ? item.created_at : null,
+        updated_at: typeof item.updated_at === "string" ? item.updated_at : null,
+      };
+    })
+    .filter((item) => item.display_type === "text" || item.logo_url)
     .sort((left, right) => left.ordem - right.ordem)
     .map((item, index) => ({ ...item, ordem: index + 1 }));
 }

@@ -17,6 +17,7 @@ type AnnouncementBody = {
   text?: unknown;
   bg_color?: unknown;
   text_color?: unknown;
+  font_size?: unknown;
   ordem?: unknown;
   is_active?: unknown;
   image_url?: unknown;
@@ -26,7 +27,7 @@ type AnnouncementBody = {
   priority?: unknown;
 };
 
-const ANNOUNCEMENT_COLUMNS = "id,title,text,bg_color,text_color,ordem,is_active,created_at,updated_at,image_url,scheduled_start,scheduled_end,recurrence,priority";
+const ANNOUNCEMENT_COLUMNS = "id,title,text,bg_color,text_color,font_size,ordem,is_active,created_at,updated_at,image_url,scheduled_start,scheduled_end,recurrence,priority";
 
 function asText(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
@@ -39,6 +40,11 @@ function asColor(value: unknown, fallback: string) {
 
 function asOrder(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function asFontSize(value: unknown, fallback: number) {
+  const size = typeof value === "number" && Number.isFinite(value) ? Math.round(value) : fallback;
+  return Math.min(120, Math.max(20, size));
 }
 
 function asDate(value: unknown) {
@@ -58,6 +64,7 @@ function normalizeAnnouncement(value: Partial<Announcement>): Announcement {
     text: asText(value.text),
     bg_color: asColor(value.bg_color, "#123a70"),
     text_color: asColor(value.text_color, "#ffffff"),
+    font_size: asFontSize(value.font_size, 48),
     ordem: asOrder(value.ordem),
     is_active: value.is_active !== false,
     image_url: asText(value.image_url, ""),
@@ -107,6 +114,7 @@ function buildAnnouncement(body: AnnouncementBody, existing?: Announcement, fall
     text,
     bg_color: asColor(body.bg_color, existing?.bg_color || "#123a70"),
     text_color: asColor(body.text_color, existing?.text_color || "#ffffff"),
+    font_size: asFontSize(body.font_size, existing?.font_size ?? 48),
     ordem: asOrder(body.ordem) || existing?.ordem || fallbackOrder,
     is_active: body.is_active !== false,
     image_url: asText(body.image_url, existing?.image_url || ""),
@@ -217,6 +225,7 @@ export async function POST(request: Request) {
           text,
           bg_color: asColor(body.bg_color, "#123a70"),
           text_color: asColor(body.text_color, "#ffffff"),
+          font_size: asFontSize(body.font_size, 48),
           ordem: asOrder(body.ordem) || nextOrder,
           is_active: body.is_active !== false,
           image_url: asText(body.image_url, ""),
@@ -271,6 +280,7 @@ export async function PATCH(request: Request) {
         text,
         bg_color: asColor(body.bg_color, "#123a70"),
         text_color: asColor(body.text_color, "#ffffff"),
+        font_size: asFontSize(body.font_size, 48),
         ordem: asOrder(body.ordem),
         is_active: body.is_active !== false,
         image_url: asText(body.image_url, ""),
