@@ -45,6 +45,9 @@ function getOptionalOverrides(body: ConfigRequestBody): Partial<Configuracoes> {
     theme_primary_color: optionalColor(body.theme_primary_color, defaultConfig.theme_primary_color || "#08244f"),
     theme_secondary_color: optionalColor(body.theme_secondary_color, defaultConfig.theme_secondary_color || "#04142e"),
     theme_accent_color: optionalColor(body.theme_accent_color, defaultConfig.theme_accent_color || "#2b7be4"),
+    tts_enabled: Boolean(body.tts_enabled),
+    tts_volume: typeof body.tts_volume === "number" ? body.tts_volume : 1.0,
+    tts_voice: optionalText(body.tts_voice),
   };
 }
 
@@ -91,9 +94,6 @@ export async function POST(request: Request) {
       youtube_link: optionalText(body.youtube_link),
       texto_aviso: optionalText(body.texto_aviso),
       display_mode: isDisplayMode(body.display_mode) ? body.display_mode : defaultConfig.display_mode,
-      image_url: optionalText(body.image_url),
-      announcement_title: optionalText(body.announcement_title),
-      announcement_text: optionalText(body.announcement_text),
       updated_at: new Date().toISOString(),
     };
 

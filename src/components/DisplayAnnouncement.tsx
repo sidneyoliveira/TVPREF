@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import type { Announcement } from "@/lib/types";
+import type { Announcement, Configuracoes } from "@/lib/types";
 
 interface DisplayAnnouncementProps {
   title: string;
@@ -31,6 +31,7 @@ export function DisplayAnnouncement({ title, text, bgColor, textColor }: Display
 
 interface DisplayAnnouncementQueueProps {
   announcements: Announcement[];
+  config: Configuracoes;
   fallbackTitle: string;
   fallbackText: string;
   onBackgroundColorChange?: (color: string) => void;
@@ -38,6 +39,7 @@ interface DisplayAnnouncementQueueProps {
 
 export function DisplayAnnouncementQueue({
   announcements,
+  config,
   fallbackTitle,
   fallbackText,
   onBackgroundColorChange,
@@ -72,6 +74,26 @@ export function DisplayAnnouncementQueue({
   useEffect(() => {
     onBackgroundColorChange?.(currentBackgroundColor);
   }, [currentBackgroundColor, onBackgroundColorChange]);
+
+  useEffect(() => {
+    if (!config.tts_enabled || !currentAnnouncement) return;
+    
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(`${currentAnnouncement.title}. ${currentAnnouncement.text}`);
+      utterance.volume = config.tts_volume ?? 1.0;
+      
+      if (config.tts_voice) {
+        const voices = window.speechSynthesis.getVoices();
+        const selectedVoice = voices.find(v => v.name.includes(config.tts_voice!));
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+        }
+      }
+      
+      window.speechSynthesis.speak(utterance);
+    }
+  }, [currentAnnouncement, config.tts_enabled, config.tts_volume, config.tts_voice]);
 
   if (!currentAnnouncement) {
     return <DisplayAnnouncement title={fallbackTitle} text={fallbackText} bgColor={currentBackgroundColor} />;

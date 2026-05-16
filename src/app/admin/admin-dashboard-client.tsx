@@ -14,7 +14,6 @@ import {
   Plus,
   Save,
   Search,
-  SplitSquareHorizontal,
   Trash2,
   Tv,
   UploadCloud,
@@ -24,6 +23,8 @@ import { toast } from "sonner";
 import { useTvData } from "@/hooks/useTvData";
 import { notifyTvDataChange } from "@/lib/tv-sync";
 import { DISPLAY_MODES, type Announcement, type Configuracoes, type DisplayMode } from "@/lib/types";
+import { useDragAndDrop } from "@/hooks/useDragAndDrop";
+import { InstagramCard } from "@/components/InstagramCard";
 import logoBranca from "@/img/logo_branca.png";
 
 type ConfigFormState = {
@@ -32,13 +33,13 @@ type ConfigFormState = {
   aviso_bg_color: string;
   aviso_text_color: string;
   display_mode: DisplayMode;
-  image_url: string;
-  announcement_title: string;
-  announcement_text: string;
   show_instagram: boolean;
   theme_primary_color: string;
   theme_secondary_color: string;
   theme_accent_color: string;
+  tts_enabled: boolean;
+  tts_volume: number;
+  tts_voice: string;
 };
 
 type AnnouncementFormState = {
@@ -48,6 +49,11 @@ type AnnouncementFormState = {
   text_color: string;
   ordem: number;
   is_active: boolean;
+  image_url: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  recurrence: string;
+  priority: number;
 };
 
 type PersistOptions = {
@@ -72,13 +78,13 @@ const DEFAULT_FORM: ConfigFormState = {
   aviso_bg_color: "#123a70",
   aviso_text_color: "#ffffff",
   display_mode: "youtube",
-  image_url: "",
-  announcement_title: "",
-  announcement_text: "",
   show_instagram: false,
   theme_primary_color: "#08244f",
   theme_secondary_color: "#04142e",
   theme_accent_color: "#2b7be4",
+  tts_enabled: false,
+  tts_volume: 1.0,
+  tts_voice: "",
 };
 
 const DEFAULT_ANNOUNCEMENT_FORM: AnnouncementFormState = {
@@ -88,6 +94,11 @@ const DEFAULT_ANNOUNCEMENT_FORM: AnnouncementFormState = {
   text_color: "#ffffff",
   ordem: 0,
   is_active: true,
+  image_url: "",
+  scheduled_start: "",
+  scheduled_end: "",
+  recurrence: "none",
+  priority: 0,
 };
 
 const MODE_OPTIONS: Array<{
@@ -96,10 +107,8 @@ const MODE_OPTIONS: Array<{
   icon: typeof Tv;
 }> = [
   { id: "youtube", label: "YouTube", icon: Tv },
-  { id: "image", label: "Imagem", icon: ImageIcon },
   { id: "announcement", label: "Aviso", icon: Megaphone },
   { id: "carousel", label: "Carrossel", icon: GalleryHorizontal },
-  { id: "split", label: "Split", icon: SplitSquareHorizontal },
 ];
 
 const MODE_LABELS = MODE_OPTIONS.reduce(
@@ -117,13 +126,13 @@ function toFormState(config: Configuracoes): ConfigFormState {
     aviso_bg_color: config.aviso_bg_color || DEFAULT_FORM.aviso_bg_color,
     aviso_text_color: config.aviso_text_color || DEFAULT_FORM.aviso_text_color,
     display_mode: DISPLAY_MODES.includes(config.display_mode) ? config.display_mode : DEFAULT_FORM.display_mode,
-    image_url: config.image_url || "",
-    announcement_title: config.announcement_title || "",
-    announcement_text: config.announcement_text || "",
     show_instagram: Boolean(config.show_instagram),
     theme_primary_color: config.theme_primary_color || DEFAULT_FORM.theme_primary_color,
     theme_secondary_color: config.theme_secondary_color || DEFAULT_FORM.theme_secondary_color,
     theme_accent_color: config.theme_accent_color || DEFAULT_FORM.theme_accent_color,
+    tts_enabled: Boolean(config.tts_enabled),
+    tts_volume: typeof config.tts_volume === "number" ? config.tts_volume : 1.0,
+    tts_voice: config.tts_voice || "",
   };
 }
 
@@ -134,6 +143,54 @@ function fileNameFromUrl(url: string) {
   } catch {
     return url.split("/").pop() || "midia";
   }
+}
+
+async function compressImage(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.type === "image/gif" || file.type === "image/svg+xml") return file;
+  return new Promise((resolve) => {
+    const img = document.createElement("img");
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      const canvas = document.createElement("canvas");
+      const MAX_WIDTH = 1920;
+      const MAX_HEIGHT = 1080;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width = Math.round((width * MAX_HEIGHT) / height);
+          height = MAX_HEIGHT;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(file);
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return resolve(file);
+          const compressedName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+          resolve(new File([blob], compressedName, { type: "image/webp", lastModified: Date.now() }));
+        },
+        "image/webp",
+        0.85
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      resolve(file);
+    };
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -152,7 +209,10 @@ function Panel({ title, icon: Icon, children }: { title: string; icon: typeof Tv
   );
 }
 
+export type AdminTab = "dashboard" | "midia" | "avisos" | "instagram" | "config";
+
 export function AdminDashboardClient() {
+  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const [password, setPassword] = useState("");
   const [form, setForm] = useState<ConfigFormState>(DEFAULT_FORM);
@@ -172,6 +232,41 @@ export function AdminDashboardClient() {
   const previewRef = useRef<HTMLDivElement>(null);
 
   const { config, instagramLinks, carouselImages, announcements, loading, refetch } = useTvData();
+
+  const handleReorderAPI = async (table: string, itemsWithNewOrder: any[]) => {
+    try {
+      await fetch("/api/admin/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ table, items: itemsWithNewOrder.map((item, index) => ({ id: item.id, ordem: index + 1 })) })
+      });
+      notifyTvDataChange();
+      await refetch();
+    } catch (error) {
+      toast.error("Erro ao reordenar.");
+    }
+  };
+
+  const {
+    draggedId: dragAnnId,
+    handleDragStart: dragAnnStart,
+    handleDragEnter: dragAnnEnter,
+    handleDragEnd: dragAnnEnd,
+  } = useDragAndDrop(announcements, (newItems) => handleReorderAPI("announcements", newItems));
+
+  const {
+    draggedId: dragInstaId,
+    handleDragStart: dragInstaStart,
+    handleDragEnter: dragInstaEnter,
+    handleDragEnd: dragInstaEnd,
+  } = useDragAndDrop(instagramLinks, (newItems) => handleReorderAPI("instagram_links", newItems));
+
+  const {
+    draggedId: dragMediaId,
+    handleDragStart: dragMediaStart,
+    handleDragEnter: dragMediaEnter,
+    handleDragEnd: dragMediaEnd,
+  } = useDragAndDrop(carouselImages, (newItems) => handleReorderAPI("carousel_images", newItems));
 
   useEffect(() => {
     let active = true;
@@ -358,8 +453,10 @@ export function AdminDashboardClient() {
     try {
       setIsUploading(true);
 
+      const processedFile = await compressImage(file);
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", processedFile);
 
       const response = await fetch("/api/admin/upload", {
         method: "POST",
@@ -498,6 +595,11 @@ export function AdminDashboardClient() {
       text_color: announcement.text_color,
       ordem: announcement.ordem,
       is_active: announcement.is_active,
+      image_url: announcement.image_url || "",
+      scheduled_start: announcement.scheduled_start || "",
+      scheduled_end: announcement.scheduled_end || "",
+      recurrence: announcement.recurrence || "none",
+      priority: announcement.priority || 0,
     });
   }
 
@@ -629,10 +731,26 @@ export function AdminDashboardClient() {
               <h1>Controle da TV</h1>
               <p>
                 {loading
-                  ? "Sincronizando"
+                  ? "Sincronizando..."
                   : `${carouselImages.length} mídias | ${instagramLinks.length} posts | ${activeAnnouncementsCount} avisos`}
               </p>
             </div>
+          </div>
+
+          <div className="admin-tabs" style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+            {(['dashboard', 'midia', 'avisos', 'instagram', 'config'] as AdminTab[]).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`admin-button ${activeTab === tab ? 'admin-button-primary' : 'admin-button-ghost'}`}
+              >
+                {tab === 'dashboard' && 'Visão Geral'}
+                {tab === 'midia' && 'Mídia'}
+                {tab === 'avisos' && 'Avisos'}
+                {tab === 'instagram' && 'Instagram'}
+                {tab === 'config' && 'Configurações'}
+              </button>
+            ))}
           </div>
 
           <div className="admin-header-actions">
@@ -646,7 +764,7 @@ export function AdminDashboardClient() {
               className="admin-button admin-button-success"
             >
               <Save size={16} />
-            <span>{isSaving ? "Salvando" : "Salvar conteúdo"}</span>
+              <span>{isSaving ? "Salvando" : "Salvar conteúdo"}</span>
             </button>
             <button type="button" onClick={handleLogout} className="admin-button admin-button-ghost">
               <LogOut size={16} />
@@ -656,146 +774,188 @@ export function AdminDashboardClient() {
         </div>
       </header>
 
-      <div className="admin-layout">
-        <div className="admin-column">
-          <Panel title="No Ar Agora" icon={MonitorPlay}>
-            <div className="admin-live-summary">
-              <div>
-                <p className="admin-muted">Modo ativo</p>
-                <p className="admin-strong">{currentMode.label}</p>
+      <div className="admin-layout" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {activeTab === 'dashboard' && (
+          <div className="admin-grid-layout" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+            <Panel title="No Ar Agora" icon={MonitorPlay}>
+              <div className="admin-live-summary">
+                <div>
+                  <p className="admin-muted">Modo ativo</p>
+                  <p className="admin-strong">{currentMode.label}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleShowInstagram}
+                  className={`admin-button admin-button-toggle ${form.show_instagram ? "is-active" : ""}`}
+                >
+                  Instagram {form.show_instagram ? "ON" : "OFF"}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={toggleShowInstagram}
-                className={`admin-button admin-button-toggle ${form.show_instagram ? "is-active" : ""}`}
-              >
-                Instagram {form.show_instagram ? "ON" : "OFF"}
-              </button>
-            </div>
+              <div className="admin-mode-grid">
+                {MODE_OPTIONS.map((mode) => {
+                  const Icon = mode.icon;
+                  const isActive = form.display_mode === mode.id;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => handleModeChange(mode.id)}
+                      className={`admin-mode-button ${isActive ? "is-active" : ""}`}
+                    >
+                      <Icon size={19} />
+                      <span>{mode.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Panel>
 
-            <div className="admin-mode-grid">
-              {MODE_OPTIONS.map((mode) => {
-                const Icon = mode.icon;
-                const isActive = form.display_mode === mode.id;
-
-                return (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => handleModeChange(mode.id)}
-                    className={`admin-mode-button ${isActive ? "is-active" : ""}`}
-                  >
-                    <Icon size={19} />
-                    <span>{mode.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </Panel>
-
-          <Panel title="Transmissão" icon={Tv}>
-            <div className="admin-field-stack">
-              <FieldLabel>Link do YouTube</FieldLabel>
-              <div className="admin-input-shell">
-                <Link2 size={15} className="admin-input-icon" />
-                <input
-                  type="url"
-                  value={form.youtube_link}
-                  onChange={(event) => setForm((current) => ({ ...current, youtube_link: event.target.value }))}
-                  className="admin-control admin-control-borderless"
-                  placeholder="https://youtube.com/..."
+            <Panel title="Pré-visualização" icon={Tv}>
+              <div className="admin-tv-preview" ref={previewRef} style={{ maxHeight: '250px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <iframe 
+                  src="/" 
+                  title="TV Live Preview"
+                  style={{
+                    width: "1920px",
+                    height: "1080px",
+                    maxWidth: "none",
+                    pointerEvents: "none",
+                    transform: `scale(${previewScale > 0.192 ? 0.192 : previewScale})`
+                  }}
                 />
               </div>
-            </div>
-          </Panel>
+            </Panel>
 
-          <Panel title="Letreiro" icon={Megaphone}>
-            <div className="admin-field-stack">
-              <FieldLabel>Texto</FieldLabel>
-              <textarea
-                value={form.texto_aviso}
-                onChange={(event) => setForm((current) => ({ ...current, texto_aviso: event.target.value }))}
-                className="admin-control admin-textarea"
-                placeholder="Mensagem exibida no rodapé"
-              />
-            </div>
-          </Panel>
+            <Panel title="Transmissão" icon={Tv}>
+              <div className="admin-field-stack">
+                <FieldLabel>Link do YouTube</FieldLabel>
+                <div className="admin-input-shell">
+                  <Link2 size={15} className="admin-input-icon" />
+                  <input
+                    type="url"
+                    value={form.youtube_link}
+                    onChange={(event) => setForm((current) => ({ ...current, youtube_link: event.target.value }))}
+                    className="admin-control admin-control-borderless"
+                    placeholder="https://youtube.com/..."
+                  />
+                </div>
+              </div>
+              <div className="admin-field-stack" style={{ marginTop: '16px' }}>
+                <FieldLabel>Letreiro (Rodapé)</FieldLabel>
+                <textarea
+                  value={form.texto_aviso}
+                  onChange={(event) => setForm((current) => ({ ...current, texto_aviso: event.target.value }))}
+                  className="admin-control admin-textarea"
+                  placeholder="Mensagem exibida no rodapé"
+                />
+              </div>
+            </Panel>
+          </div>
+        )}
 
-          <Panel title="Tema da TV" icon={MonitorPlay}>
-            <div
-              className="admin-theme-preview"
-              style={{ backgroundColor: form.theme_primary_color, borderColor: form.theme_accent_color }}
-            >
-              <span style={{ backgroundColor: form.theme_secondary_color }} />
-              <span style={{ backgroundColor: form.theme_accent_color }} />
-            </div>
-            <div className="admin-theme-presets">
-              <button
-                type="button"
-                className="admin-button admin-button-outline"
-                onClick={() =>
-                  setForm((current) => ({
-                    ...current,
-                    theme_primary_color: "#08244f",
-                    theme_secondary_color: "#04142e",
-                    theme_accent_color: "#2b7be4",
-                  }))
-                }
+        {activeTab === 'config' && (
+          <div className="admin-grid-layout" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+            <Panel title="Tema da TV" icon={MonitorPlay}>
+              <div
+                className="admin-theme-preview"
+                style={{ backgroundColor: form.theme_primary_color, borderColor: form.theme_accent_color }}
               >
-                Azul padrão
-              </button>
-            </div>
-            <div className="admin-color-grid">
-              <label className="admin-field-stack">
-                <FieldLabel>Cor principal</FieldLabel>
-                <input
-                  type="color"
-                  value={form.theme_primary_color}
-                  onChange={(event) => setForm((current) => ({ ...current, theme_primary_color: event.target.value }))}
-                  className="admin-color-input"
-                />
-              </label>
-              <label className="admin-field-stack">
-                <FieldLabel>Cor base</FieldLabel>
-                <input
-                  type="color"
-                  value={form.theme_secondary_color}
-                  onChange={(event) => setForm((current) => ({ ...current, theme_secondary_color: event.target.value }))}
-                  className="admin-color-input"
-                />
-              </label>
-              <label className="admin-field-stack admin-field-wide">
-                <FieldLabel>Destaque</FieldLabel>
-                <input
-                  type="color"
-                  value={form.theme_accent_color}
-                  onChange={(event) => setForm((current) => ({ ...current, theme_accent_color: event.target.value }))}
-                  className="admin-color-input"
-                />
-              </label>
-            </div>
-          </Panel>
-        </div>
+                <span style={{ backgroundColor: form.theme_secondary_color }} />
+                <span style={{ backgroundColor: form.theme_accent_color }} />
+              </div>
+              <div className="admin-theme-presets">
+                <button
+                  type="button"
+                  className="admin-button admin-button-outline"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      theme_primary_color: "#08244f",
+                      theme_secondary_color: "#04142e",
+                      theme_accent_color: "#2b7be4",
+                    }))
+                  }
+                >
+                  Azul padrão
+                </button>
+              </div>
+              <div className="admin-color-grid">
+                <label className="admin-field-stack">
+                  <FieldLabel>Cor principal</FieldLabel>
+                  <input
+                    type="color"
+                    value={form.theme_primary_color}
+                    onChange={(event) => setForm((current) => ({ ...current, theme_primary_color: event.target.value }))}
+                    className="admin-color-input"
+                  />
+                </label>
+                <label className="admin-field-stack">
+                  <FieldLabel>Cor base</FieldLabel>
+                  <input
+                    type="color"
+                    value={form.theme_secondary_color}
+                    onChange={(event) => setForm((current) => ({ ...current, theme_secondary_color: event.target.value }))}
+                    className="admin-color-input"
+                  />
+                </label>
+                <label className="admin-field-stack admin-field-wide">
+                  <FieldLabel>Destaque</FieldLabel>
+                  <input
+                    type="color"
+                    value={form.theme_accent_color}
+                    onChange={(event) => setForm((current) => ({ ...current, theme_accent_color: event.target.value }))}
+                    className="admin-color-input"
+                  />
+                </label>
+              </div>
+            </Panel>
+          </div>
+        )}
 
-        <div className="admin-column admin-column-wide">
-          <Panel title="Pré-visualização" icon={Tv}>
-            <div className="admin-tv-preview" ref={previewRef}>
-              <iframe 
-                src="/" 
-                title="TV Live Preview"
-                style={{
-                  width: "1920px",
-                  height: "1080px",
-              maxWidth: "none",
-              pointerEvents: "none",
-                  transform: `scale(${previewScale})`
-                }}
-              />
-            </div>
-          </Panel>
-<Panel title="Avisos de Tela" icon={Megaphone}>
-            <div className="admin-announcement-editor">
-              <div className="admin-content-form admin-announcement-form">
+        {activeTab === 'avisos' && (
+          <div className="admin-column admin-column-wide">
+            <Panel title="Narrador TTS (Texto para Voz)" icon={Megaphone}>
+              <div className="admin-field-stack" style={{ marginBottom: 16 }}>
+                <label className="admin-check-row">
+                  <input
+                    type="checkbox"
+                    checked={form.tts_enabled}
+                    onChange={(event) => setForm((current) => ({ ...current, tts_enabled: event.target.checked }))}
+                  />
+                  <strong>Ativar Narrador</strong> (Ler os avisos em voz alta na TV)
+                </label>
+              </div>
+              {form.tts_enabled && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div className="admin-field-stack">
+                    <FieldLabel>Volume ({Math.round(form.tts_volume * 100)}%)</FieldLabel>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={form.tts_volume}
+                      onChange={(event) => setForm((current) => ({ ...current, tts_volume: Number(event.target.value) }))}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div className="admin-field-stack">
+                    <FieldLabel>Voz (Opcional)</FieldLabel>
+                    <input
+                      type="text"
+                      placeholder="Ex: Google português do Brasil"
+                      value={form.tts_voice}
+                      onChange={(event) => setForm((current) => ({ ...current, tts_voice: event.target.value }))}
+                      className="admin-control"
+                    />
+                  </div>
+                </div>
+              )}
+            </Panel>
+
+            <Panel title="Avisos de Tela" icon={Megaphone}>
+              <div className="admin-announcement-editor">
+                <div className="admin-content-form admin-announcement-form">
                 <div className="admin-field-stack">
                   <FieldLabel>Título</FieldLabel>
                   <input
@@ -831,6 +991,76 @@ export function AdminDashboardClient() {
                     placeholder="Mensagem exibida em tela cheia"
                   />
                 </div>
+                <div className="admin-field-stack">
+                  <FieldLabel>Imagem (opcional)</FieldLabel>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      // Compressão básica (apenas para JPEG/PNG/WEBP)
+                      let uploadFile = file;
+                      if (file.size > 800 * 1024) {
+                        try {
+                          const imageBitmap = await createImageBitmap(file);
+                          const canvas = document.createElement('canvas');
+                          canvas.width = imageBitmap.width;
+                          canvas.height = imageBitmap.height;
+                          const ctx = canvas.getContext('2d');
+                          ctx?.drawImage(imageBitmap, 0, 0);
+                          const blob = await new Promise<Blob | null>((resolve) =>
+                            canvas.toBlob(
+                              (b) => resolve(b),
+                              file.type === 'image/png' ? 'image/png' : 'image/webp',
+                              0.8
+                            )
+                          );
+                          if (blob && blob.size < file.size) {
+                            uploadFile = new File([blob], file.name, { type: blob.type });
+                          }
+                        } catch {}
+                      }
+                      toast.loading("Enviando imagem...", { id: "upload-announcement-image" });
+                      const imageUrl = await uploadFileToSupabase(uploadFile);
+                      if (imageUrl) {
+                        setAnnouncementForm((current) => ({ ...current, image_url: imageUrl }));
+                        toast.success("Imagem carregada.", { id: "upload-announcement-image" });
+                      } else {
+                        toast.dismiss("upload-announcement-image");
+                      }
+                      event.target.value = "";
+                    }}
+                    className="admin-hidden-input"
+                    id="announcement-image-upload"
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="admin-button admin-button-outline"
+                      onClick={() => document.getElementById('announcement-image-upload')?.click()}
+                    >
+                      <UploadCloud size={16} />
+                      <span>{announcementForm.image_url ? "Substituir imagem" : "Enviar imagem"}</span>
+                    </button>
+                    {announcementForm.image_url && (
+                      <button
+                        type="button"
+                        className="admin-button admin-button-danger"
+                        onClick={() => setAnnouncementForm((current) => ({ ...current, image_url: "" }))}
+                      >
+                        <Trash2 size={16} />
+                        <span>Remover</span>
+                      </button>
+                    )}
+                  </div>
+                  {announcementForm.image_url && (
+                    <div style={{ marginTop: 8 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={announcementForm.image_url} alt="Preview" style={{ maxWidth: 120, maxHeight: 80, borderRadius: 8, border: '1px solid #eee' }} />
+                    </div>
+                  )}
+                </div>
                 <div className="admin-color-grid admin-announcement-color-grid">
                   <label className="admin-field-stack">
                     <FieldLabel>Fundo</FieldLabel>
@@ -855,6 +1085,50 @@ export function AdminDashboardClient() {
                     />
                   </label>
                 </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px', padding: '16px', backgroundColor: '#061b3d', borderRadius: '8px' }}>
+                  <div className="admin-field-stack">
+                    <FieldLabel>Início (Opcional)</FieldLabel>
+                    <input
+                      type="datetime-local"
+                      value={announcementForm.scheduled_start}
+                      onChange={(event) => setAnnouncementForm((current) => ({ ...current, scheduled_start: event.target.value }))}
+                      className="admin-control"
+                    />
+                  </div>
+                  <div className="admin-field-stack">
+                    <FieldLabel>Fim (Opcional)</FieldLabel>
+                    <input
+                      type="datetime-local"
+                      value={announcementForm.scheduled_end}
+                      onChange={(event) => setAnnouncementForm((current) => ({ ...current, scheduled_end: event.target.value }))}
+                      className="admin-control"
+                    />
+                  </div>
+                  <div className="admin-field-stack">
+                    <FieldLabel>Recorrência</FieldLabel>
+                    <select
+                      value={announcementForm.recurrence}
+                      onChange={(event) => setAnnouncementForm((current) => ({ ...current, recurrence: event.target.value }))}
+                      className="admin-control"
+                    >
+                      <option value="none">Nenhuma</option>
+                      <option value="daily">Diária</option>
+                      <option value="weekly">Semanal</option>
+                    </select>
+                  </div>
+                  <div className="admin-field-stack">
+                    <FieldLabel>Prioridade (Maior aparece mais)</FieldLabel>
+                    <input
+                      type="number"
+                      min={0}
+                      value={announcementForm.priority}
+                      onChange={(event) => setAnnouncementForm((current) => ({ ...current, priority: Number(event.target.value) }))}
+                      className="admin-control"
+                    />
+                  </div>
+                </div>
+
               </div>
 
               <div className="admin-announcement-actions">
@@ -904,12 +1178,29 @@ export function AdminDashboardClient() {
                       </td>
                     </tr>
                   ) : (
-                    announcements.map((announcement) => (
-                      <tr key={announcement.id}>
-                        <td className="admin-muted">{announcement.ordem}</td>
+                    announcements.map((announcement, index) => (
+                      <tr 
+                        key={announcement.id}
+                        draggable
+                        onDragStart={() => dragAnnStart(index, announcement.id)}
+                        onDragEnter={() => dragAnnEnter(index)}
+                        onDragEnd={dragAnnEnd}
+                        onDragOver={(e) => e.preventDefault()}
+                        style={{ opacity: dragAnnId === announcement.id ? 0.5 : 1, cursor: 'grab' }}
+                      >
+                        <td className="admin-muted" style={{ cursor: 'grab' }}>
+                          <LayoutTemplate size={14} style={{ display: 'inline', marginRight: 4 }} />
+                          {announcement.ordem}
+                        </td>
                         <td>
                           <div className="admin-table-primary">{announcement.title}</div>
                           <div className="admin-table-secondary">{announcement.text}</div>
+                          {announcement.image_url && (
+                            <div style={{ marginTop: 4 }}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={announcement.image_url} alt="Imagem do aviso" style={{ maxWidth: 80, maxHeight: 50, borderRadius: 6, border: '1px solid #eee' }} />
+                            </div>
+                          )}
                         </td>
                         <td>
                           <button
@@ -943,63 +1234,13 @@ export function AdminDashboardClient() {
                   )}
                 </tbody>
               </table>
-            </div>
-          </Panel>
-          <Panel title="Imagem Fixa / Fallback" icon={LayoutTemplate}>
-            <div className="admin-content-form">
-              <div className="admin-field-stack">
-                <FieldLabel>Título</FieldLabel>
-                <input
-                  type="text"
-                  value={form.announcement_title}
-                  onChange={(event) => setForm((current) => ({ ...current, announcement_title: event.target.value }))}
-                  className="admin-control"
-                  placeholder="Título do aviso ou imagem"
-                />
               </div>
-              <div className="admin-field-stack admin-content-text">
-                <FieldLabel>Texto</FieldLabel>
-                <textarea
-                  value={form.announcement_text}
-                  onChange={(event) => setForm((current) => ({ ...current, announcement_text: event.target.value }))}
-                  className="admin-control admin-textarea admin-textarea-large"
-                  placeholder="Descrição do aviso"
-                />
+              </Panel>
               </div>
-              <div className="admin-field-stack">
-                <FieldLabel>Imagem fixa</FieldLabel>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={imageInputRef}
-                  className="admin-hidden-input"
-                  onChange={handleSingleImageUpload}
-                />
-                <button
-                  type="button"
-                  onClick={() => imageInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="admin-button admin-button-outline admin-button-full"
-                >
-                  <UploadCloud size={16} />
-                  <span>Enviar imagem</span>
-                </button>
-              </div>
-            </div>
+              )}
 
-            {form.image_url && (
-              <div className="admin-preview-frame">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.image_url} alt="Preview da imagem fixa" className="admin-preview-image" />
-              </div>
-            )}
-          </Panel>
-
-          
-        </div>
-
-        <div className="admin-column">
-          <Panel title="Posts do Instagram" icon={LayoutTemplate}>
+              {activeTab === 'instagram' && (          <div className="admin-grid-layout" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+            <Panel title="Posts do Instagram" icon={LayoutTemplate}>
             <div className="admin-field-stack">
               <div className="admin-input-shell">
                 <Link2 size={15} className="admin-input-icon" />
@@ -1042,13 +1283,22 @@ export function AdminDashboardClient() {
                       </td>
                     </tr>
                   ) : (
-                    filteredInstagramLinks.map((post) => (
-                      <tr key={post.id}>
-                        <td className="admin-muted">{post.ordem}</td>
+                    filteredInstagramLinks.map((post, index) => (
+                      <tr 
+                        key={post.id}
+                        draggable
+                        onDragStart={() => dragInstaStart(index, post.id)}
+                        onDragEnter={() => dragInstaEnter(index)}
+                        onDragEnd={dragInstaEnd}
+                        onDragOver={(e) => e.preventDefault()}
+                        style={{ opacity: dragInstaId === post.id ? 0.5 : 1, cursor: 'grab' }}
+                      >
+                        <td className="admin-muted" style={{ cursor: 'grab' }}>
+                          <LayoutTemplate size={14} style={{ display: 'inline', marginRight: 4 }} />
+                          {post.ordem}
+                        </td>
                         <td>
-                          <a href={post.url} target="_blank" rel="noreferrer" className="admin-table-link">
-                            {post.url}
-                          </a>
+                          <InstagramCard url={post.url} />
                         </td>
                         <td className="admin-cell-action">
                           <button
@@ -1067,8 +1317,12 @@ export function AdminDashboardClient() {
               </table>
             </div>
           </Panel>
+          </div>
+        )}
 
-          <Panel title="Galeria do Carrossel" icon={GalleryHorizontal}>
+        {activeTab === 'midia' && (
+          <div className="admin-grid-layout" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+            <Panel title="Galeria do Carrossel" icon={GalleryHorizontal}>
             <div className="admin-toolbar">
               <div className="admin-input-shell">
                 <Search size={15} className="admin-input-icon" />
@@ -1115,12 +1369,33 @@ export function AdminDashboardClient() {
                       </td>
                     </tr>
                   ) : (
-                    filteredCarouselImages.map((media) => (
-                      <tr key={media.id}>
-                        <td className="admin-muted">{media.ordem}</td>
-                        <td>
-                          <div className="admin-table-primary">{fileNameFromUrl(media.imagem_url)}</div>
-                          {media.titulo && <div className="admin-table-secondary">{media.titulo}</div>}
+                    filteredCarouselImages.map((media, index) => (
+                      <tr 
+                        key={media.id}
+                        draggable
+                        onDragStart={() => dragMediaStart(index, media.id)}
+                        onDragEnter={() => dragMediaEnter(index)}
+                        onDragEnd={dragMediaEnd}
+                        onDragOver={(e) => e.preventDefault()}
+                        style={{ opacity: dragMediaId === media.id ? 0.5 : 1, cursor: 'grab' }}
+                      >
+                        <td className="admin-muted" style={{ cursor: 'grab' }}>
+                          <LayoutTemplate size={14} style={{ display: 'inline', marginRight: 4 }} />
+                          {media.ordem}
+                        </td>
+                        <td style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '60px', height: '40px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#061b3d', flexShrink: 0 }}>
+                            {/\.(mp4|webm)$/i.test(media.imagem_url) ? (
+                              <video src={media.imagem_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                            ) : (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img src={media.imagem_url} alt="Mídia" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            )}
+                          </div>
+                          <div>
+                            <div className="admin-table-primary">{fileNameFromUrl(media.imagem_url)}</div>
+                            {media.titulo && <div className="admin-table-secondary">{media.titulo}</div>}
+                          </div>
                         </td>
                         <td className="admin-muted">{/\.(mp4|webm)$/i.test(media.imagem_url) ? "Vídeo" : "Imagem"}</td>
                         <td className="admin-cell-action">
@@ -1140,7 +1415,8 @@ export function AdminDashboardClient() {
               </table>
             </div>
           </Panel>
-        </div>
+          </div>
+        )}
       </div>
     </main>
   );

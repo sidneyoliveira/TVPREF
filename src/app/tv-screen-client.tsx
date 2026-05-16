@@ -6,8 +6,6 @@ import Image from "next/image";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { DisplayAnnouncementQueue } from "@/components/DisplayAnnouncement";
 import { DisplayCarousel } from "@/components/DisplayCarousel";
-import { DisplayImage } from "@/components/DisplayImage";
-import { DisplaySplit } from "@/components/DisplaySplit";
 import { DisplayWithOptionalInstagram } from "@/components/DisplayWithOptionalInstagram";
 import { DisplayYoutube } from "@/components/DisplayYoutube";
 import { useClock } from "@/hooks/useClock";
@@ -40,24 +38,46 @@ function DisplayContent({
   announcements,
   onAnnouncementBackgroundChange,
 }: DisplayContentProps) {
+  const activeAnnouncements = announcements.filter(a => {
+    if (!a.is_active) return false;
+    if (!a.scheduled_start && !a.scheduled_end) return true;
+
+    const now = new Date();
+    
+    if (a.recurrence === 'daily' && a.scheduled_start && a.scheduled_end) {
+      const start = new Date(a.scheduled_start);
+      const end = new Date(a.scheduled_end);
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const startMinutes = start.getHours() * 60 + start.getMinutes();
+      const endMinutes = end.getHours() * 60 + end.getMinutes();
+      return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    }
+
+    if (a.scheduled_start) {
+      const start = new Date(a.scheduled_start);
+      if (now < start) return false;
+    }
+    
+    if (a.scheduled_end) {
+      const end = new Date(a.scheduled_end);
+      if (now > end) return false;
+    }
+    
+    return true;
+  });
+
+  const sortedAnnouncements = [...activeAnnouncements].sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
   let content: ReactNode;
 
   switch (config.display_mode) {
-    case "image":
-      content = (
-        <DisplayImage
-          imageUrl={config.image_url || ""}
-          title={config.announcement_title || undefined}
-          description={config.announcement_text || undefined}
-        />
-      );
-      break;
     case "announcement":
       content = (
         <DisplayAnnouncementQueue
-          announcements={announcements}
-          fallbackTitle={config.announcement_title || "Aviso Importante"}
-          fallbackText={config.announcement_text || "Nenhum aviso configurado."}
+          announcements={sortedAnnouncements}
+          config={config}
+          fallbackTitle="Aviso Importante"
+          fallbackText="Nenhum aviso configurado."
           onBackgroundColorChange={onAnnouncementBackgroundChange}
         />
       );
@@ -65,16 +85,13 @@ function DisplayContent({
     case "carousel":
       content = <DisplayCarousel images={carouselImages} />;
       break;
-    case "split":
-      content = <DisplaySplit config={config} instagramLinks={instagramLinks} />;
-      break;
     case "youtube":
     default:
       content = <DisplayYoutube youtubeLink={config.youtube_link || ""} />;
       break;
   }
 
-  if (config.show_instagram && config.display_mode !== "split") {
+  if (config.show_instagram) {
     return (
       <DisplayWithOptionalInstagram config={config} instagramLinks={instagramLinks}>
         {content}

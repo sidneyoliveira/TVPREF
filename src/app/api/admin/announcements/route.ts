@@ -19,9 +19,14 @@ type AnnouncementBody = {
   text_color?: unknown;
   ordem?: unknown;
   is_active?: unknown;
+  image_url?: unknown;
+  scheduled_start?: unknown;
+  scheduled_end?: unknown;
+  recurrence?: unknown;
+  priority?: unknown;
 };
 
-const ANNOUNCEMENT_COLUMNS = "id,title,text,bg_color,text_color,ordem,is_active,created_at,updated_at";
+const ANNOUNCEMENT_COLUMNS = "id,title,text,bg_color,text_color,ordem,is_active,created_at,updated_at,image_url,scheduled_start,scheduled_end,recurrence,priority";
 
 function asText(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
@@ -36,13 +41,17 @@ function asOrder(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function asDate(value: unknown) {
+  if (typeof value === "string" && !isNaN(Date.parse(value))) return value;
+  return null;
+}
+
 function shouldUseStorageFallback(error: unknown) {
   return isMissingRelationError(error) || isMissingColumnError(error);
 }
 
 function normalizeAnnouncement(value: Partial<Announcement>): Announcement {
   const now = new Date().toISOString();
-
   return {
     id: asText(value.id) || crypto.randomUUID(),
     title: asText(value.title),
@@ -51,6 +60,11 @@ function normalizeAnnouncement(value: Partial<Announcement>): Announcement {
     text_color: asColor(value.text_color, "#ffffff"),
     ordem: asOrder(value.ordem),
     is_active: value.is_active !== false,
+    image_url: asText(value.image_url, ""),
+    scheduled_start: asText(value.scheduled_start, "") || null,
+    scheduled_end: asText(value.scheduled_end, "") || null,
+    recurrence: asText(value.recurrence, "") || null,
+    priority: asOrder(value.priority),
     created_at: asText(value.created_at, now),
     updated_at: asText(value.updated_at, now),
   };
@@ -95,6 +109,11 @@ function buildAnnouncement(body: AnnouncementBody, existing?: Announcement, fall
     text_color: asColor(body.text_color, existing?.text_color || "#ffffff"),
     ordem: asOrder(body.ordem) || existing?.ordem || fallbackOrder,
     is_active: body.is_active !== false,
+    image_url: asText(body.image_url, existing?.image_url || ""),
+    scheduled_start: asText(body.scheduled_start, existing?.scheduled_start || "") || null,
+    scheduled_end: asText(body.scheduled_end, existing?.scheduled_end || "") || null,
+    recurrence: asText(body.recurrence, existing?.recurrence || "") || null,
+    priority: asOrder(body.priority) || existing?.priority || 0,
     created_at: existing?.created_at || now,
     updated_at: now,
   });
@@ -200,6 +219,11 @@ export async function POST(request: Request) {
           text_color: asColor(body.text_color, "#ffffff"),
           ordem: asOrder(body.ordem) || nextOrder,
           is_active: body.is_active !== false,
+          image_url: asText(body.image_url, ""),
+          scheduled_start: asText(body.scheduled_start, "") || null,
+          scheduled_end: asText(body.scheduled_end, "") || null,
+          recurrence: asText(body.recurrence, "") || null,
+          priority: asOrder(body.priority) || 0,
           updated_at: new Date().toISOString(),
         },
       ])
@@ -249,6 +273,11 @@ export async function PATCH(request: Request) {
         text_color: asColor(body.text_color, "#ffffff"),
         ordem: asOrder(body.ordem),
         is_active: body.is_active !== false,
+        image_url: asText(body.image_url, ""),
+        scheduled_start: asText(body.scheduled_start, "") || null,
+        scheduled_end: asText(body.scheduled_end, "") || null,
+        recurrence: asText(body.recurrence, "") || null,
+        priority: asOrder(body.priority) || 0,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

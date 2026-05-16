@@ -1,9 +1,7 @@
 export const DISPLAY_MODES = [
   "youtube",
-  "image",
   "announcement",
   "carousel",
-  "split",
 ] as const;
 
 export type DisplayMode = (typeof DISPLAY_MODES)[number];
@@ -13,15 +11,15 @@ export interface Configuracoes {
   youtube_link: string;
   texto_aviso: string;
   display_mode: DisplayMode;
-  image_url?: string | null;
-  announcement_title?: string | null;
-  announcement_text?: string | null;
   show_instagram?: boolean | null;
   aviso_bg_color?: string | null;
   aviso_text_color?: string | null;
   theme_primary_color?: string | null;
   theme_secondary_color?: string | null;
   theme_accent_color?: string | null;
+  tts_enabled?: boolean | null;
+  tts_volume?: number | null;
+  tts_voice?: string | null;
   updated_at?: string | null;
 }
 
@@ -47,6 +45,11 @@ export interface Announcement {
   text_color: string;
   ordem: number;
   is_active: boolean;
+  image_url?: string | null;
+  scheduled_start?: string | null;
+  scheduled_end?: string | null;
+  recurrence?: string | null;
+  priority?: number;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -65,13 +68,13 @@ export const defaultConfig: Configuracoes = {
   youtube_link: "",
   texto_aviso: "Aguardando configurações...",
   display_mode: "youtube",
-  image_url: "",
-  announcement_title: "",
-  announcement_text: "",
   show_instagram: false,
   aviso_bg_color: "#123a70",
   aviso_text_color: "#ffffff",
   theme_primary_color: "#08244f",
   theme_secondary_color: "#04142e",
   theme_accent_color: "#2b7be4",
+  tts_enabled: false,
+  tts_volume: 1.0,
+  tts_voice: "",
 };
