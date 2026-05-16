@@ -233,7 +233,7 @@ export function AdminDashboardClient() {
 
   const { config, instagramLinks, carouselImages, announcements, loading, refetch } = useTvData();
 
-  const handleReorderAPI = async (table: string, itemsWithNewOrder: any[]) => {
+  const handleReorderAPI = async (table: string, itemsWithNewOrder: Array<{ id: string | number }>) => {
     try {
       await fetch("/api/admin/reorder", {
         method: "POST",

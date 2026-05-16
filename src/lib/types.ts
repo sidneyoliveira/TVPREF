@@ -64,6 +64,28 @@ export interface CurrentWeather {
   temperatureC: number | null;
 }
 
+export const ANUNCIO_TRANSITION_STYLES = ["fade", "zoom", "slide"] as const;
+
+export type AnuncioTransitionStyle = (typeof ANUNCIO_TRANSITION_STYLES)[number];
+
+export interface SponsorLogo {
+  id: string;
+  name: string;
+  logo_url: string;
+  ordem: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AnuncioSettings {
+  frame_url: string;
+  duration_seconds: number;
+  transition_ms: number;
+  transition_style: AnuncioTransitionStyle;
+  sponsors: SponsorLogo[];
+  updated_at?: string | null;
+}
+
 export const defaultConfig: Configuracoes = {
   youtube_link: "",
   texto_aviso: "Aguardando configurações...",
@@ -77,4 +99,13 @@ export const defaultConfig: Configuracoes = {
   tts_enabled: false,
   tts_volume: 1.0,
   tts_voice: "",
+};
+
+export const defaultAnuncioSettings: AnuncioSettings = {
+  frame_url: "",
+  duration_seconds: 5,
+  transition_ms: 700,
+  transition_style: "fade",
+  sponsors: [],
+  updated_at: null,
 };
