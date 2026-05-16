@@ -61,7 +61,7 @@ export function AnuncioDisplay({ settings, variant = "fullscreen" }: AnuncioDisp
                 style={{
                   backgroundColor: currentSponsor.bg_color || "#123a70",
                   color: currentSponsor.text_color || "#ffffff",
-                  fontSize: currentSponsor.font_size ? `${currentSponsor.font_size}px` : "48px",
+                  fontSize: currentSponsor.font_size ? `${currentSponsor.font_size}px` : undefined,
                 }}
               >
                 {currentSponsor.name}
