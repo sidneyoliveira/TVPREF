@@ -1459,8 +1459,8 @@ button:disabled {
 }
 
 .anuncio-mode-square .anuncio-sponsor-window {
-  width: min(62vw, 980px);
-  height: min(34vw, 540px);
+  width: min(90vw, 980px);
+  height: min(60vw, 540px);
   min-height: 230px;
 }
 
@@ -2156,8 +2156,8 @@ button:disabled {
 
 @media (max-width: 620px) {
   .anuncio-mode-square .anuncio-sponsor-window {
-    width: 72vw;
-    height: 40vw;
+    width: 90vw;
+    height: 60vw;
     min-height: 160px;
   }
 

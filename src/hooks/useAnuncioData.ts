@@ -74,10 +74,6 @@ async function fetchAnuncioSettings() {
   try {
     const response = await fetch("/api/anuncio", { cache: "no-store" });
 
-    if (!response.ok) {
-      throw new Error("Falha ao buscar configurações do anúncio");
-    }
-
     return normalizeSettings((await response.json()) as LegacyAnuncioSettings);
   } catch (error) {
     console.error("Erro ao buscar módulo de anúncio:", error);
